@@ -1,0 +1,1 @@
+#include <cartesian_trajectory_generator/cartesian_trajectory_generator_base.h>
