@@ -10,6 +10,9 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED
     geometry_msgs
     roscpp
+    tf
+    tf_conversions
+    eigen_conversions
 )
 
 find_package(Eigen3 REQUIRED)
@@ -103,7 +106,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES cartesian_trajectory_generator
-  CATKIN_DEPENDS roscpp geometry_msgs
+  CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions
   DEPENDS Eigen3
 )
 
@@ -133,6 +136,8 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp src/cartesian_trajectory_generator_base.cpp)
+
+add_executable(listener src/listener.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
