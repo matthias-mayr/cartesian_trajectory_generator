@@ -13,6 +13,7 @@ find_package(catkin REQUIRED
     tf
     tf_conversions
     eigen_conversions
+    message_generation
 )
 
 find_package(Eigen3 REQUIRED)
@@ -55,11 +56,10 @@ find_package(Eigen3 REQUIRED)
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+ add_service_files(
+   FILES
+   generate_trajectory.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -69,10 +69,11 @@ find_package(Eigen3 REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs  
+   geometry_msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -106,7 +107,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES cartesian_trajectory_generator
-  CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions
+  CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions message_runtime
   DEPENDS Eigen3
 )
 
@@ -136,8 +137,8 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp src/cartesian_trajectory_generator_base.cpp)
+add_executable(user_input src/user_input.cpp)
 
-add_executable(listener src/listener.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -152,8 +153,9 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
+  ${Eigen_LIBRARIES}
 )
-
+target_link_libraries(user_input ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
