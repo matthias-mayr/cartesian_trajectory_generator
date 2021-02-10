@@ -1,81 +1,82 @@
 
 //<<#include <eigen_conversions/eigen_msg.h>
 //#include <eigen3/Eigen/Core>
+
+#include <ros/ros.h> //for debugging
 #include <Eigen/Geometry>
 #include <iostream>
 #include <vector>
 class cartesian_trajectory_generator_base
 {
 public:
-
-        std::vector<Eigen::Vector3d> get_trajectory()
-        {
-            return position_array;
-        }
-
-        std::vector<double> getVelocities(){
-            return velocity_array;
-        }
-    bool almostEqual(Eigen::Vector3d v1, Eigen::Vector3d v2) //not done
+    Eigen::Vector3d get_position()
     {
-        //bool cond1=abs(v1[0]-v2[0])<;
-        return true;
+        return currentPosition;
     }
-    void makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate)
+
+    double get_velocity()
     {
-        
+        return v;
+    }
 
-        Eigen::Vector3d currentPosition;
-        Eigen::Vector3d origin(0.0, 0.0, 0.0);
-        double dx = endPosition[0] - startPosition[0];
-        double dy = endPosition[1] - startPosition[1];
-        double dz = endPosition[2] - startPosition[2];
-        Eigen::Vector3d direction = endPosition - startPosition;
+    void makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double time)
+    {
+        double distance = (endPosition - startPosition).norm();
+        Eigen::Vector3d direction = (endPosition - startPosition) / distance; //normalized direction
+        double accelerationDistance = v_max * v_max / (2 * a_max);
+        double accelerationTime = v_max / a_max;
+        double distanceAcceleration = v_max * accelerationTime / 2;
+        double distanceConstantVel = distance - 2 * distanceAcceleration;
+        double timeConstantVel = distanceConstantVel / v_max;
+        double totTime = timeConstantVel + accelerationTime * 2;
 
-        //acceleration phase (assuming linear maximum acceleration is applied)
-        double v = 0;
-        double a = a_max;
-        currentPosition = startPosition;
-        position_array.push_back(currentPosition);
-        double distance = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
-        double distanceStartRetardation = v_max * v_max / (2 * a_max);
-        //while (!almostEqual(currentPosition, endPosition))
-        for(int i=0;i<50;i++)
+        if (accelerationDistance * 2 < distance) //first case: we will reach maximum velocity and be able to deaccelerate before reaching endpose
         {
-
-            double dx = currentPosition[0] - startPosition[0];
-            double dy = currentPosition[1] - startPosition[1];
-            double dz = currentPosition[2] - startPosition[2];
-            double currentDistance = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
-            velocity_array.push_back(v);
-            if (abs(distance - currentDistance) >= distanceStartRetardation) //if its time to start retardation
+            if (time < accelerationTime) // acceleration phase
             {
-                a = -a_max;
-                //v = v + a * 1 / publish_rate;
-                currentPosition = currentPosition + v * direction + 0.5 * a * direction * 1 / (publish_rate * publish_rate); //x=x0+v0*t+0.5*a*t², v=v0+a*t
+                v = a_max * time;
+                currentPosition = startPosition + 0.5 * a_max * time * time * direction;
             }
-
             else
             {
+                v = v_max; //max velocity reached
+                currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v * (time - accelerationTime) * direction;
+                double currentDistance = (currentPosition - startPosition).norm();
 
-                if (v < v_max) //keep accelerating until maximum velocity is reached
-                {
-                    v = v + a_max * 1 / publish_rate;
-                    currentPosition = currentPosition + 0.5 * a * direction * 1 / (publish_rate * publish_rate); //x=x0+v0*t+0.5*a*t², v=v0+a*t
-                }
-                else
-                {
-                    v = v_max;
-                    a = 0;
-                    currentPosition=currentPosition+v*1/publish_rate*direction;
+                if (distanceAcceleration >= distance - currentDistance)
+                { //if its time to slow down
+                    double newtime = time - timeConstantVel - accelerationTime;
+                    v = v_max - a_max * newtime;
+                    currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v_max * (timeConstantVel)*direction - 0.5 * a_max * newtime * newtime * direction + v_max * newtime * direction;
                 }
             }
+        }
+        else
+        {
+            v = a_max * time;
+            currentPosition = startPosition + 0.5 * a_max * time * time * direction;
+            double currentDistance = (currentPosition - startPosition).norm();
+            if (currentDistance >= distance / 2)
+            {
+                double v_peak = sqrt(2 * a_max * distance / 2);
+                double time_peak = v_peak / a_max;
+                if (time <= time_peak * 2)
+                {
 
-            position_array.push_back(currentPosition);
+                    v = v_peak - a_max * (time - time_peak);
+
+                    currentPosition = startPosition + 0.5 * a_max * time_peak * time_peak * direction - 0.5 * a_max * (time - time_peak) * (time - time_peak) * direction + v_peak * (time - time_peak) * direction;
+                }
+                else
+                { //if publishrate is very slow:needed to make a small last "jump", otherwise it starts going backwards
+                    currentPosition = endPosition;
+                    v = 0;
+                }
+            }
         }
     }
 
 private:
-    std::vector<Eigen::Vector3d> position_array;
-    std::vector<double> velocity_array;
+    Eigen::Vector3d currentPosition;
+    double v;
 };
