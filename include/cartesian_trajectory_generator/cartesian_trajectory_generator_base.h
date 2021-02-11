@@ -9,17 +9,17 @@
 class cartesian_trajectory_generator_base
 {
 public:
-    Eigen::Vector3d get_position()
+    std::vector<Eigen::Vector3d> get_position()
     {
-        return currentPosition;
+        return position_array;
     }
 
-    double get_velocity()
+    std::vector<double> get_velocity()
     {
-        return v;
+        return velocity_array;
     }
 
-    void makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double time)
+    bool makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate)
     {
         double distance = (endPosition - startPosition).norm();
         Eigen::Vector3d direction = (endPosition - startPosition) / distance; //normalized direction
@@ -29,54 +29,69 @@ public:
         double distanceConstantVel = distance - 2 * distanceAcceleration;
         double timeConstantVel = distanceConstantVel / v_max;
         double totTime = timeConstantVel + accelerationTime * 2;
+        int i = 0;
+        double tol = 0.001;
+        currentPosition = startPosition;
+        double time;
+        //to check if it starts going backwards
 
-        if (accelerationDistance * 2 < distance) //first case: we will reach maximum velocity and be able to deaccelerate before reaching endpose
+        while ((currentPosition - endPosition).norm() > tol)
+
         {
-            if (time < accelerationTime) // acceleration phase
+            time = i * 1 / publish_rate;
+
+            if (accelerationDistance * 2 < distance) //first case: we will reach maximum velocity and be able to deaccelerate before reaching endpose
             {
-                v = a_max * time;
-                currentPosition = startPosition + 0.5 * a_max * time * time * direction;
+                if (time < accelerationTime) // acceleration phase
+                {
+                    v = a_max * time;
+                    currentPosition = startPosition + 0.5 * a_max * time * time * direction;
+                }
+                else
+                {
+                    v = v_max; //max velocity reached
+                    currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v * (time - accelerationTime) * direction;
+                    double currentDistance = (currentPosition - startPosition).norm();
+
+                    if (distanceAcceleration >= distance - currentDistance)
+                    { //if its time to slow down
+                        double newtime = time - timeConstantVel - accelerationTime;
+                        v = v_max - a_max * newtime;
+                        currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v_max * (timeConstantVel)*direction - 0.5 * a_max * newtime * newtime * direction + v_max * newtime * direction;
+                    }
+                }
             }
             else
             {
-                v = v_max; //max velocity reached
-                currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v * (time - accelerationTime) * direction;
+                v = a_max * time;
+                currentPosition = startPosition + 0.5 * a_max * time * time * direction;
                 double currentDistance = (currentPosition - startPosition).norm();
-
-                if (distanceAcceleration >= distance - currentDistance)
-                { //if its time to slow down
-                    double newtime = time - timeConstantVel - accelerationTime;
-                    v = v_max - a_max * newtime;
-                    currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v_max * (timeConstantVel)*direction - 0.5 * a_max * newtime * newtime * direction + v_max * newtime * direction;
-                }
-            }
-        }
-        else
-        {
-            v = a_max * time;
-            currentPosition = startPosition + 0.5 * a_max * time * time * direction;
-            double currentDistance = (currentPosition - startPosition).norm();
-            if (currentDistance >= distance / 2)
-            {
-                double v_peak = sqrt(2 * a_max * distance / 2);
-                double time_peak = v_peak / a_max;
-                if (time <= time_peak * 2)
+                if (currentDistance >= distance / 2)
                 {
+                    double v_peak = sqrt(2 * a_max * distance / 2);
+                    double time_peak = v_peak / a_max;
+                    if (time <= time_peak * 2)
+                    {
+                        v = v_peak - a_max * (time - time_peak);
 
-                    v = v_peak - a_max * (time - time_peak);
-
-                    currentPosition = startPosition + 0.5 * a_max * time_peak * time_peak * direction - 0.5 * a_max * (time - time_peak) * (time - time_peak) * direction + v_peak * (time - time_peak) * direction;
-                }
-                else
-                { //if publishrate is very slow:needed to make a small last "jump", otherwise it starts going backwards
-                    currentPosition = endPosition;
-                    v = 0;
+                        currentPosition = startPosition + 0.5 * a_max * time_peak * time_peak * direction - 0.5 * a_max * (time - time_peak) * (time - time_peak) * direction + v_peak * (time - time_peak) * direction;
+                    }
                 }
             }
+
+            velocity_array.push_back(v);
+            position_array.push_back(currentPosition);
+
+            i++;
         }
+        velocity_array.push_back(0);
+        position_array.push_back(endPosition);
+        return true;
     }
 
 private:
     Eigen::Vector3d currentPosition;
-    double v;
+    double v = 0;
+    std::vector<Eigen::Vector3d> position_array;
+    std::vector<double> velocity_array;
 };

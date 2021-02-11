@@ -49,17 +49,16 @@ find_package(Eigen3 REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+ add_message_files(
+   FILES
+   generate_pose.msg
+ )
 
 ## Generate services in the 'srv' folder
- add_service_files(
-   FILES
-   generate_trajectory.srv
-)
+# add_service_files(
+#   FILES
+#   generate_trajectory.srv
+#)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -137,7 +136,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp src/cartesian_trajectory_generator_base.cpp)
-add_executable(user_input src/user_input.cpp)
+
 
 
 ## Rename C++ executable without prefix
@@ -155,7 +154,6 @@ target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Eigen_LIBRARIES}
 )
-target_link_libraries(user_input ${catkin_LIBRARIES})
 #############
 ## Install ##
 #############
