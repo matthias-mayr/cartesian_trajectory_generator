@@ -24,8 +24,8 @@ public:
         //in terminal type: rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 1.0 world ee_frame 100
         try
         {
-            listenPose.waitForTransform("ee_frame", "world", ros::Time(0), ros::Duration(3.0));
-            listenPose.lookupTransform("ee_frame", "world", ros::Time(0), transform);
+            listenPose.waitForTransform(frame_name, "world", ros::Time(0), ros::Duration(3.0));
+            listenPose.lookupTransform(frame_name, "world", ros::Time(0), transform); 
         }
         catch (tf::TransformException &ex)
         {
@@ -70,8 +70,8 @@ public:
             poseStamped.pose.position.y = pos[1];
             poseStamped.pose.position.z = pos[2];
 
-            double vel = velocity_array[i];
-            poseStamped.pose.orientation.w = vel; //TEMPORARY FOR DEBUGGING
+            //double vel = velocity_array[i];
+            //poseStamped.pose.orientation.w = vel; //TEMPORARY FOR DEBUGGING
             publisher.publish(poseStamped);
             i++;
             ros::spinOnce();
@@ -86,7 +86,7 @@ public:
         ROS_INFO_STREAM("v_max= " << v_max);
         ROS_INFO_STREAM("a_max= " << a_max);
     }
-    void setParameters(std::string &topic_name, double &publish_rate, double &v_max, double &a_max)
+    void setParameters(std::string &topic_name, double &publish_rate, double &v_max, double &a_max,std::string frame_name)
     {
         this->topic_name = topic_name;
 
@@ -100,6 +100,7 @@ public:
         this->publish_rate = publish_rate;
         this->v_max = v_max;
         this->a_max = a_max;
+        this->frame_name=frame_name;
         rate = ros::Rate(publish_rate);
         _n.setParam("topic_name", topic_name);
         _n.setParam("publish_rate", publish_rate);
@@ -125,6 +126,7 @@ public:
         {
             publishPose();
             ros::spin();
+            rate.sleep();
         }
     }
 
@@ -148,7 +150,7 @@ private:
     
     //temporary i guess
     std::string topicOfThisPublisher;
-
+    std::string frame_name;
     //for initial pose
     tf::TransformListener listenPose;
     tf::StampedTransform transform;
