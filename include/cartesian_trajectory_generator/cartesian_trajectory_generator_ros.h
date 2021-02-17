@@ -24,21 +24,18 @@ public:
         //in terminal type: rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 1.0 world ee_frame 100
         try
         {
-            listenPose.waitForTransform(frame_name, "world", ros::Time(0), ros::Duration(3.0));
-            listenPose.lookupTransform(frame_name, "world", ros::Time(0), transform); 
+            listenPose.waitForTransform("world",frame_name, ros::Time(0), ros::Duration(3.0));
+            listenPose.lookupTransform( "world", frame_name, ros::Time(0), transform); 
         }
         catch (tf::TransformException &ex)
         {
             ROS_ERROR("%s", ex.what());
             ros::Duration(1.0).sleep();
+            ros::shutdown();
         }
-        startPosition[0] = transform.getOrigin().getX();
-        startPosition[1] = transform.getOrigin().getY();
-        startPosition[2] = transform.getOrigin().getZ();
-        startOrientation.x() = transform.getRotation().getX();
-        startOrientation.y() = transform.getRotation().getY();
-        startOrientation.z() = transform.getRotation().getZ();
-        startOrientation.w() = transform.getRotation().getW();
+        tf::vectorTFToEigen(transform.getOrigin(),startPosition);
+         tf::quaternionTFToEigen(transform.getRotation(),startOrientation);
+    
     }
 
     void publishPose()
@@ -70,8 +67,8 @@ public:
             poseStamped.pose.position.y = pos[1];
             poseStamped.pose.position.z = pos[2];
 
-            //double vel = velocity_array[i];
-            //poseStamped.pose.orientation.w = vel; //TEMPORARY FOR DEBUGGING
+            double vel = velocity_array[i];
+            poseStamped.pose.orientation.w = vel; //TEMPORARY FOR DEBUGGING
             publisher.publish(poseStamped);
             i++;
             ros::spinOnce();
