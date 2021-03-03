@@ -43,6 +43,8 @@ public:
         Eigen::Vector3d startPosition;
         Eigen::Quaterniond startOrientation;
         getInitialPose(startPosition, startOrientation);
+      
+        ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ",startPosition[0], startPosition[1], startPosition[2],startOrientation.coeffs()[0], startOrientation.coeffs()[1],startOrientation.coeffs()[2],startOrientation.coeffs()[3]);
         bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate);
         if (!makePlan)
         {
@@ -66,9 +68,12 @@ public:
             poseStamped.pose.position.x = pos[0];
             poseStamped.pose.position.y = pos[1];
             poseStamped.pose.position.z = pos[2];
-
-            double vel = velocity_array[i];
-            poseStamped.pose.orientation.w = vel; //TEMPORARY FOR DEBUGGING
+            poseStamped.pose.orientation.x=startOrientation.coeffs()[0];
+            poseStamped.pose.orientation.y=startOrientation.coeffs()[1];
+            poseStamped.pose.orientation.z=startOrientation.coeffs()[2];
+            poseStamped.pose.orientation.w=startOrientation.coeffs()[3];
+            //double vel = velocity_array[i];
+            //poseStamped.pose.orientation.w = vel; //TEMPORARY FOR DEBUGGING
             publisher.publish(poseStamped);
             i++;
             ros::spinOnce();
@@ -120,10 +125,12 @@ public:
     void run()
     {
         while (_n.ok())
-        {
+        {   
             publishPose();
+         
             ros::spin();
-            rate.sleep();
+            
+            //rate.sleep();
         }
     }
 
