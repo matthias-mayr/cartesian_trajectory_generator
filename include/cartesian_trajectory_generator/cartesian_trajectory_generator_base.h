@@ -1,8 +1,4 @@
 
-//<<#include <eigen_conversions/eigen_msg.h>
-//#include <eigen3/Eigen/Core>
-
-#include <ros/ros.h> //for debugging
 #include <Eigen/Geometry>
 #include <iostream>
 #include <vector>

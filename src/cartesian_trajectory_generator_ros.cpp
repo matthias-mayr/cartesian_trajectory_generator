@@ -5,7 +5,7 @@
 int main(int argc, char **argv)
 {
     //terminal e.g. : rosrun cartesian_trajectory_generator cartesian_trajectory_generator 1 1 1 0 0 0 1 publish_pose frame_name 100 0.2 0.05  
-    //rosrun cartesian_trajectory_generator cartesian_trajectory_generator -0.513 -0.504 1.5 0 0 0 1 publish_pose eq_pose 100 0.2 0.05
+    //rosrun cartesian_trajectory_generator cartesian_trajectory_generator -0.5 -0.5 1.5 0 0 0 1 /bh/CartesianImpedance_trajectory_controller/target_pose bh_link_ee 100 5.0 1.0
 
     ros::init(argc, argv, "cartesian_trajectory_generator");
     int nrInputs = 13;
