@@ -14,7 +14,7 @@ public:
     cartesian_trajectory_generator_ros()
     {
         //initialization
-        topicOfThisPublisher = "publish_pose";
+        topicOfThisPublisher = "/bh/CartesianImpedance_trajectory_controller/target_pose";
         poseStamped.header.frame_id = "world";
         publisher = _n.advertise<geometry_msgs::PoseStamped>(topicOfThisPublisher, 1);
     }
@@ -24,21 +24,18 @@ public:
         //in terminal type: rosrun tf static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 1.0 world ee_frame 100
         try
         {
-            listenPose.waitForTransform(frame_name, "world", ros::Time(0), ros::Duration(3.0));
-            listenPose.lookupTransform(frame_name, "world", ros::Time(0), transform); 
+            listenPose.waitForTransform("world",frame_name, ros::Time(0), ros::Duration(3.0));
+            listenPose.lookupTransform( "world", frame_name, ros::Time(0), transform); 
         }
         catch (tf::TransformException &ex)
         {
             ROS_ERROR("%s", ex.what());
             ros::Duration(1.0).sleep();
+            ros::shutdown();
         }
-        startPosition[0] = transform.getOrigin().getX();
-        startPosition[1] = transform.getOrigin().getY();
-        startPosition[2] = transform.getOrigin().getZ();
-        startOrientation.x() = transform.getRotation().getX();
-        startOrientation.y() = transform.getRotation().getY();
-        startOrientation.z() = transform.getRotation().getZ();
-        startOrientation.w() = transform.getRotation().getW();
+        tf::vectorTFToEigen(transform.getOrigin(),startPosition);
+         tf::quaternionTFToEigen(transform.getRotation(),startOrientation);
+    
     }
 
     void publishPose()
@@ -46,6 +43,12 @@ public:
         Eigen::Vector3d startPosition;
         Eigen::Quaterniond startOrientation;
         getInitialPose(startPosition, startOrientation);
+            poseStamped.pose.orientation.x=startOrientation.coeffs()[0];
+            poseStamped.pose.orientation.y=startOrientation.coeffs()[1];
+            poseStamped.pose.orientation.z=startOrientation.coeffs()[2];
+            poseStamped.pose.orientation.w=startOrientation.coeffs()[3];
+
+        ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ",startPosition[0], startPosition[1], startPosition[2],startOrientation.coeffs()[0], startOrientation.coeffs()[1],startOrientation.coeffs()[2],startOrientation.coeffs()[3]);
         bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate);
         if (!makePlan)
         {
@@ -61,7 +64,7 @@ public:
         int i = 0;
         double tol = 0.001;
         ROS_INFO("plan:\n (x=%2lf,y=%2lf,z=%2lf)->(x=%3lf,y=%3lf,z=%3lf)\n", startPosition[0], startPosition[1], startPosition[2], endPosition[0], endPosition[1], endPosition[2]);
-        ros::Duration(3.0).sleep();
+        ros::Duration(1.0).sleep();
         while (i < position_array.size())
         {
             poseStamped.header.stamp = ros::Time::now();
@@ -77,6 +80,8 @@ public:
             ros::spinOnce();
             rate.sleep();
         }
+        ROS_INFO_STREAM("Plan published. Shutting down node...");
+        ros::shutdown();
     }
     void printParameters()
     {
@@ -123,14 +128,18 @@ public:
     void run()
     {
         while (_n.ok())
-        {
+        {   
             publishPose();
+         
             ros::spin();
-            rate.sleep();
+            
+            //rate.sleep();
         }
     }
 
 private:
+    Eigen::Vector3d current_position;
+    Eigen::Quaterniond current_orientation;
     geometry_msgs::PoseStamped poseStamped;
     ros::NodeHandle _n;
     ros::Publisher publisher;
