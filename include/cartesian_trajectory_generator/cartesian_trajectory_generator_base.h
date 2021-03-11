@@ -5,16 +5,23 @@
 class cartesian_trajectory_generator_base
 {
 public:
-    std::vector<Eigen::Vector3d> get_position()
+    std::vector<Eigen::Vector3d> pop_position()
     {
-        return position_array;
+        std::vector<Eigen::Vector3d> temp = position_array;
+        position_array.clear();
+        return temp;
     }
 
-    std::vector<double> get_velocity()
+    std::vector<double> pop_velocity()
     {
-        return velocity_array;
+        std::vector<double> temp;
+        velocity_array.clear();
+        return temp;
     }
 
+double get_total_time(){
+    return totTime;
+}
     bool makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate)
     {
         double distance = (endPosition - startPosition).norm();
@@ -24,20 +31,31 @@ public:
         double distanceAcceleration = v_max * accelerationTime / 2;
         double distanceConstantVel = distance - 2 * distanceAcceleration;
         double timeConstantVel = distanceConstantVel / v_max;
-        double totTime = timeConstantVel + accelerationTime * 2;
+       
         int i = 0;
-        double tol = 0.001;
+        double tol = 0.0001;
         currentPosition = startPosition;
         double time;
         //to check if it starts going backwards
-
+    
+         if (accelerationDistance * 2 < distance)
+            {
+  totTime=timeConstantVel + accelerationTime * 2;
+            }
+            else{
+                totTime=2*sqrt(distance/a_max);
+            }
+        
         while ((currentPosition - endPosition).norm() > tol)
 
         {
             time = i * 1 / publish_rate;
-
+            if(time>totTime*2){ //multiplited with 2 just to be sure
+                return false;
+            }
             if (accelerationDistance * 2 < distance) //first case: we will reach maximum velocity and be able to deaccelerate before reaching endpose
             {
+                              
                 if (time < accelerationTime) // acceleration phase
                 {
                     v = a_max * time;
@@ -90,4 +108,6 @@ private:
     double v = 0;
     std::vector<Eigen::Vector3d> position_array;
     std::vector<double> velocity_array;
+     double totTime;
 };
+

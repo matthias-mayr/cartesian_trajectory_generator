@@ -14,6 +14,7 @@ find_package(catkin REQUIRED
     tf_conversions
     eigen_conversions
     message_generation
+    dynamic_reconfigure
 )
 
 find_package(Eigen3 REQUIRED)
@@ -52,14 +53,14 @@ find_package(Eigen3 REQUIRED)
 ## Generate messages in the 'msg' folder
  add_message_files(
    FILES
-   generate_pose.msg
+   pose.msg
  )
 
 ## Generate services in the 'srv' folder
- add_service_files(
-   FILES
-   pose.srv
-)
+ #add_service_files(
+ #  FILES
+#
+#)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -90,13 +91,12 @@ find_package(Eigen3 REQUIRED)
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+ generate_dynamic_reconfigure_options(
+   cfg/pose_param.cfg
+ )
 
 ###################################
-## catkin specific configuration ##
+## catkin specific duration ##
 ###################################
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
@@ -124,9 +124,10 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/cartesian_trajectory_generator.cpp
-# )
+## add_library(${PROJECT_NAME}
+ ## src/${PROJECT_NAME}/cartesian_trajectory_generator_ros.cpp
+##  src/${PROJECT_NAME}/cartesian_trajectory_generator_base.cpp
+## )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -136,7 +137,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp src/cartesian_trajectory_generator_base.cpp)
+add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp)
 
 
 
@@ -148,13 +149,19 @@ add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp src/ca
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(
+${PROJECT_NAME} 
+${${PROJECT_NAME}_EXPORTED_TARGETS} 
+${catkin_EXPORTED_TARGETS} 
+${PROJECT_NAME}_gencfg
+)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Eigen_LIBRARIES}
 )
+
 #############
 ## Install ##
 #############
