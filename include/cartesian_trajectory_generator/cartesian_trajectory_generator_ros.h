@@ -215,7 +215,7 @@ private:
     tf::TransformListener listenPose;
     tf::StampedTransform transform;
 
-    //for logging data to bag file
+    //to allow exporting data
     Logger logger;
 
     //path needs to be changed on your local machine. Choose your directory path where you want to save the logs.
