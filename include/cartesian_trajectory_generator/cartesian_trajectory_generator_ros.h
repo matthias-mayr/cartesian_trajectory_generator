@@ -3,6 +3,7 @@
 #include <vector>
 #include "cartesian_trajectory_generator_base.h"
 #include "cartesian_trajectory_generator/pose.h"
+#include "ros_logger/ros_logger.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "tf/transform_listener.h"
 #include <eigen_conversions/eigen_msg.h>
@@ -17,9 +18,8 @@ public:
         //initialization
         topicOfThisPublisher = "/bh/CartesianImpedance_trajectory_controller/target_pose";
         poseStamped.header.frame_id = "world";
-        publisher = _n.advertise<geometry_msgs::PoseStamped>(topicOfThisPublisher, 1);
-        current_sequence = {false, false}; //for dynamic reconfig
-        //  ros::Subscriber new_pose=_n.subscribe("req_pose", 1, &cartesian_trajectory_generator_ros::req_poseCallback, this);
+        publish_command = _n.advertise<geometry_msgs::PoseStamped>(topicOfThisPublisher, 1); // commanded poseStamped
+        current_sequence = {false, false};                                                   //for dynamic reconfig
     }
 
     void getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
@@ -79,17 +79,20 @@ public:
             ros::Duration(3.0).sleep();
             while (i < position_array.size())
             {
+
                 poseStamped.header.stamp = ros::Time::now();
                 Eigen::Vector3d pos = position_array[i];
                 poseStamped.pose.position.x = pos[0];
                 poseStamped.pose.position.y = pos[1];
                 poseStamped.pose.position.z = pos[2];
 
-                publisher.publish(poseStamped);
+                logger.log_push(poseStamped);
+                publish_command.publish(poseStamped);
                 ros::spinOnce();
                 rate.sleep();
                 i++;
             }
+            logger.log_done();
             ROS_INFO("Plan published.");
         }
     }
@@ -152,6 +155,8 @@ public:
 
     void run()
     {
+
+        logger.log_to(path, "test.txt");
         bool reset_info = false; //needed so we don't get spam
                                  //dynamic reconfiguration
         dynamic_reconfigure::Server<cartesian_trajectory_generator::pose_paramConfig> config_pose_server;
@@ -170,7 +175,9 @@ public:
             {
                 if (!reset_info)
                 {
+
                     ROS_INFO("Waiting for request");
+
                     reset_info = true;
                 }
             }
@@ -180,15 +187,17 @@ public:
     }
 
 private:
+    ros::NodeHandle _n;
+
     // Dynamic reconfigure
     Eigen::Vector3d requested_position;
     Eigen::Quaterniond requested_orientation;
     std::vector<bool> current_sequence;
-    //-
+    //--------------------------
 
     geometry_msgs::PoseStamped poseStamped;
-    ros::NodeHandle _n;
-    ros::Publisher publisher;
+
+    ros::Publisher publish_command;
     ros::Subscriber subscriber;
     std::string topic_name;
     double publish_rate;
@@ -206,4 +215,9 @@ private:
     //for initial pose
     tf::TransformListener listenPose;
     tf::StampedTransform transform;
+
+    //for logging data to bag file
+    Logger logger;
+
+    const char *path{"/home/oussama/catkin_ws/src/ros_logger/generated_logs/trajectory_logs"};
 };
