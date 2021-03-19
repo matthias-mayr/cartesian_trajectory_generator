@@ -42,12 +42,11 @@ public:
 
     void publishPose()
     {
-        // some necessary shit
         endPosition[0] = requested_position[0];
         endPosition[1] = requested_position[1];
         endPosition[2] = requested_position[2];
         endOrientation.coeffs() = requested_orientation.coeffs();
-        //--------------------
+    
         Eigen::Vector3d startPosition;
         Eigen::Quaterniond startOrientation;
         getInitialPose(startPosition, startOrientation);
@@ -79,7 +78,6 @@ public:
             ros::Duration(3.0).sleep();
             while (i < position_array.size())
             {
-
                 poseStamped.header.stamp = ros::Time::now();
                 Eigen::Vector3d pos = position_array[i];
                 poseStamped.pose.position.x = pos[0];
@@ -157,7 +155,8 @@ public:
     {
 
         logger.log_to(path, "test.txt");
-        bool reset_info = false; //needed so we don't get spam
+        bool reset_info = false; //needed so we don't get spammed
+
                                  //dynamic reconfiguration
         dynamic_reconfigure::Server<cartesian_trajectory_generator::pose_paramConfig> config_pose_server;
         dynamic_reconfigure::Server<cartesian_trajectory_generator::pose_paramConfig>::CallbackType f;
@@ -219,5 +218,6 @@ private:
     //for logging data to bag file
     Logger logger;
 
+    //path needs to be changed on your local machine. Choose your directory path where you want to save the logs.
     const char *path{"/home/oussama/catkin_ws/src/ros_logger/generated_logs/trajectory_logs"};
 };
