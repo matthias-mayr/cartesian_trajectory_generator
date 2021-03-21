@@ -20,6 +20,10 @@ public:
         poseStamped.header.frame_id = "world";
         publish_command = _n.advertise<geometry_msgs::PoseStamped>(topicOfThisPublisher, 1); // commanded poseStamped
         current_sequence = {false, false};                                                   //for dynamic reconfig
+        
+        //For logging
+        latest_request=_n.advertise<geometry_msgs::PoseStamped>("cartesian_trajectory_generator/latest_request",1);
+
     }
 
     void getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
@@ -33,8 +37,7 @@ public:
         catch (tf::TransformException &ex)
         {
             ROS_ERROR("%s", ex.what());
-            ros::Duration(1.0).sleep();
-            ros::shutdown();
+            return;
         }
         tf::vectorTFToEigen(transform.getOrigin(), startPosition);
         tf::quaternionTFToEigen(transform.getRotation(), startOrientation);
@@ -47,13 +50,11 @@ public:
         endPosition[2] = requested_position[2];
         endOrientation.coeffs() = requested_orientation.coeffs();
     
+        //get initial pose
         Eigen::Vector3d startPosition;
         Eigen::Quaterniond startOrientation;
         getInitialPose(startPosition, startOrientation);
-        poseStamped.pose.orientation.x = startOrientation.coeffs()[0];
-        poseStamped.pose.orientation.y = startOrientation.coeffs()[1];
-        poseStamped.pose.orientation.z = startOrientation.coeffs()[2];
-        poseStamped.pose.orientation.w = startOrientation.coeffs()[3];
+
 
         ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ", startPosition[0], startPosition[1], startPosition[2], startOrientation.coeffs()[0], startOrientation.coeffs()[1], startOrientation.coeffs()[2], startOrientation.coeffs()[3]);
         bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate);
@@ -69,13 +70,22 @@ public:
 
             //the plan
             std::vector<Eigen::Vector3d> position_array;
+            //std::vector<Eigen::Quaterniond> orientation_array;
             std::vector<double> velocity_array;
             position_array = ctg.pop_position();
+            //orientation_array=ctg.pop_orientation();
             velocity_array = ctg.pop_velocity();
+
             int i = 0;
             double tol = 0.001;
             ROS_INFO("plan:\n (x=%2lf,y=%2lf,z=%2lf)->(x=%3lf,y=%3lf,z=%3lf)\n", startPosition[0], startPosition[1], startPosition[2], endPosition[0], endPosition[1], endPosition[2]);
-            ros::Duration(3.0).sleep();
+            
+              
+                poseStamped.pose.orientation.x=  startOrientation.coeffs()[0];
+                poseStamped.pose.orientation.y=  startOrientation.coeffs()[1];
+                poseStamped.pose.orientation.z=  startOrientation.coeffs()[2];
+                poseStamped.pose.orientation.w=  startOrientation.coeffs()[3];
+
             while (i < position_array.size())
             {
                 poseStamped.header.stamp = ros::Time::now();
@@ -83,14 +93,12 @@ public:
                 poseStamped.pose.position.x = pos[0];
                 poseStamped.pose.position.y = pos[1];
                 poseStamped.pose.position.z = pos[2];
-
-                logger.log_push(poseStamped);
                 publish_command.publish(poseStamped);
                 ros::spinOnce();
                 rate.sleep();
                 i++;
             }
-            logger.log_done();
+
             ROS_INFO("Plan published.");
         }
     }
@@ -154,7 +162,7 @@ public:
     void run()
     {
 
-        logger.log_to(path, "test.txt");
+      //  logger.log_to(path, "test.txt");
         bool reset_info = false; //needed so we don't get spammed
 
                                  //dynamic reconfiguration
@@ -216,8 +224,8 @@ private:
     tf::StampedTransform transform;
 
     //to allow exporting data
-    Logger logger;
-
+   // Logger logger;
+    ros::Publisher latest_request;
     //path needs to be changed on your local machine. Choose your directory path where you want to save the logs.
-    const char *path{"/home/oussama/catkin_ws/src/ros_logger/generated_logs/trajectory_logs"};
+    const char *path{"/home/oussama/catkin_ws/src/cartesian_trajectory_generator/generated_logs"};
 };

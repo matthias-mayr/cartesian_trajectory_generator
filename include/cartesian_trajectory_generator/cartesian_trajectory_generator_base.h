@@ -11,6 +11,12 @@ public:
         position_array.clear();
         return temp;
     }
+    
+    std::vector<Eigen::Quaterniond> pop_orientation(){
+        std::vector<Eigen::Quaterniond> temp=orientation_array;
+        orientation_array.clear();
+
+    }
 
     std::vector<double> pop_velocity()
     {
@@ -24,6 +30,9 @@ double get_total_time(){
 }
     bool makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate)
     {
+
+
+
         double distance = (endPosition - startPosition).norm();
         Eigen::Vector3d direction = (endPosition - startPosition) / distance; //normalized direction
         double accelerationDistance = v_max * v_max / (2 * a_max);
@@ -35,6 +44,7 @@ double get_total_time(){
         int i = 0;
         double tol = 0.0001;
         currentPosition = startPosition;
+        currentOrientation=startOrientation;
         double time;
         //to check if it starts going backwards
     
@@ -49,6 +59,7 @@ double get_total_time(){
         while ((currentPosition - endPosition).norm() > tol)
 
         {
+
             time = i * 1 / publish_rate;
             if(time>totTime*2){ //multiplited with 2 just to be sure
                 return false;
@@ -95,7 +106,7 @@ double get_total_time(){
 
             velocity_array.push_back(v);
             position_array.push_back(currentPosition);
-
+            orientation_array.push_back(currentOrientation);
             i++;
         }
         velocity_array.push_back(0);
@@ -105,8 +116,10 @@ double get_total_time(){
 
 private:
     Eigen::Vector3d currentPosition;
+    Eigen::Quaterniond currentOrientation;
     double v = 0;
     std::vector<Eigen::Vector3d> position_array;
+    std::vector<Eigen::Quaterniond> orientation_array;
     std::vector<double> velocity_array;
      double totTime;
 };
