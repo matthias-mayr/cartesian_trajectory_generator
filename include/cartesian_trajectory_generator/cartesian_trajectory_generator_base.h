@@ -5,11 +5,11 @@
 class cartesian_trajectory_generator_base
 {
 public:
-    std::vector<Eigen::Vector3d> pop_position()
+    std::vector<Eigen::Vector3d> pop_position(std::vector<Eigen::Vector3d> &position)
     {
-        std::vector<Eigen::Vector3d> temp = position_array;
+        position = position_array;
         position_array.clear();
-        return temp;
+        return position;
     }
     
     std::vector<Eigen::Quaterniond> pop_orientation(){
@@ -18,13 +18,18 @@ public:
 
     }
 
-    std::vector<double> pop_velocity()
+    std::vector<double> pop_velocity(std::vector<double> &velocity)
     {
-        std::vector<double> temp;
+        velocity=velocity_array;
         velocity_array.clear();
-        return temp;
+        return velocity;
     }
 
+    std::vector<double> pop_time(std::vector<double> &time){
+        time=time_array;
+        time_array.clear();
+        return time;
+    }
 double get_total_time(){
     return totTime;
 }
@@ -61,6 +66,8 @@ double get_total_time(){
         {
 
             time = i * 1 / publish_rate;
+            time_array.push_back(time);
+
             if(time>totTime*2){ //multiplited with 2 just to be sure
                 return false;
             }
@@ -106,9 +113,10 @@ double get_total_time(){
 
             velocity_array.push_back(v);
             position_array.push_back(currentPosition);
-            orientation_array.push_back(currentOrientation);
+            //orientation_array.push_back(currentOrientation);
             i++;
         }
+        time_array.push_back(time);
         velocity_array.push_back(0);
         position_array.push_back(endPosition);
         return true;
@@ -121,6 +129,7 @@ private:
     std::vector<Eigen::Vector3d> position_array;
     std::vector<Eigen::Quaterniond> orientation_array;
     std::vector<double> velocity_array;
+    std::vector<double> time_array;
      double totTime;
 };
 

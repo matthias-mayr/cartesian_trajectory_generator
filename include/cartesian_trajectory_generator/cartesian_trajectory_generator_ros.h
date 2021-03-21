@@ -20,10 +20,9 @@ public:
         poseStamped.header.frame_id = "world";
         publish_command = _n.advertise<geometry_msgs::PoseStamped>(topicOfThisPublisher, 1); // commanded poseStamped
         current_sequence = {false, false};                                                   //for dynamic reconfig
-        
-        //For logging
-        latest_request=_n.advertise<geometry_msgs::PoseStamped>("cartesian_trajectory_generator/latest_request",1);
 
+        //For logging
+        latest_request_publisher = _n.advertise<geometry_msgs::PoseStamped>("/bh/CartesianImpedance_trajectory_controller/latest_request", 1);
     }
 
     void getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
@@ -45,16 +44,22 @@ public:
 
     void publishPose()
     {
-        endPosition[0] = requested_position[0];
-        endPosition[1] = requested_position[1];
-        endPosition[2] = requested_position[2];
+        endPosition = requested_position;
         endOrientation.coeffs() = requested_orientation.coeffs();
-    
+
+        //publishing latest request once
+        latest_poseStamped_request.pose.position.x = requested_position[0];
+        latest_poseStamped_request.pose.position.y = requested_position[1];
+        latest_poseStamped_request.pose.position.z = requested_position[2];
+        latest_poseStamped_request.pose.orientation.x = requested_orientation.coeffs()[0];
+        latest_poseStamped_request.pose.orientation.y = requested_orientation.coeffs()[1];
+        latest_poseStamped_request.pose.orientation.z = requested_orientation.coeffs()[2];
+        latest_poseStamped_request.pose.orientation.w = requested_orientation.coeffs()[3];
+        latest_request_publisher.publish(latest_poseStamped_request);
         //get initial pose
         Eigen::Vector3d startPosition;
         Eigen::Quaterniond startOrientation;
         getInitialPose(startPosition, startOrientation);
-
 
         ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ", startPosition[0], startPosition[1], startPosition[2], startOrientation.coeffs()[0], startOrientation.coeffs()[1], startOrientation.coeffs()[2], startOrientation.coeffs()[3]);
         bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate);
@@ -70,21 +75,30 @@ public:
 
             //the plan
             std::vector<Eigen::Vector3d> position_array;
-            //std::vector<Eigen::Quaterniond> orientation_array;
-            std::vector<double> velocity_array;
-            position_array = ctg.pop_position();
-            //orientation_array=ctg.pop_orientation();
-            velocity_array = ctg.pop_velocity();
+            std::vector<Eigen::Vector4d> orientation_array;
+            std::vector<double> time_array;
+            ctg.pop_position(position_array);
+            ctg.pop_time(time_array);
+
+            //temporarly fill all values with the same orientaiton
+            orientation_array.resize(position_array.size());
+            std::fill(orientation_array.begin(), orientation_array.end(), startOrientation.coeffs());
+
+            //(position_array.size(), startOrientation.coeffs());
+            poseStamped.pose.orientation.x = startOrientation.coeffs()[0];
+            poseStamped.pose.orientation.y = startOrientation.coeffs()[1];
+            poseStamped.pose.orientation.z = startOrientation.coeffs()[2];
+            poseStamped.pose.orientation.w = startOrientation.coeffs()[3];
+            ROS_INFO("%i, %i, %i", position_array.size(), orientation_array.size(), time_array.size());
+            if(logger.log_push_all(time_array, position_array, orientation_array)){
+                ROS_INFO("Trajectory saved");
+            }else{
+                ROS_ERROR("Failed to save trajectory");
+            }
 
             int i = 0;
             double tol = 0.001;
             ROS_INFO("plan:\n (x=%2lf,y=%2lf,z=%2lf)->(x=%3lf,y=%3lf,z=%3lf)\n", startPosition[0], startPosition[1], startPosition[2], endPosition[0], endPosition[1], endPosition[2]);
-            
-              
-                poseStamped.pose.orientation.x=  startOrientation.coeffs()[0];
-                poseStamped.pose.orientation.y=  startOrientation.coeffs()[1];
-                poseStamped.pose.orientation.z=  startOrientation.coeffs()[2];
-                poseStamped.pose.orientation.w=  startOrientation.coeffs()[3];
 
             while (i < position_array.size())
             {
@@ -161,11 +175,12 @@ public:
 
     void run()
     {
+        logger.set_preferences(",", 1,1); //separator, print first line, overwrite
 
-      //  logger.log_to(path, "test.txt");
+        logger.log_to(path, "commanded_trajectory.txt");
         bool reset_info = false; //needed so we don't get spammed
 
-                                 //dynamic reconfiguration
+        //dynamic reconfiguration
         dynamic_reconfigure::Server<cartesian_trajectory_generator::pose_paramConfig> config_pose_server;
         dynamic_reconfigure::Server<cartesian_trajectory_generator::pose_paramConfig>::CallbackType f;
         f = boost::bind(&cartesian_trajectory_generator_ros::callbackConfig, this, _1, _2);
@@ -203,7 +218,7 @@ private:
     //--------------------------
 
     geometry_msgs::PoseStamped poseStamped;
-
+    geometry_msgs::PoseStamped latest_poseStamped_request;
     ros::Publisher publish_command;
     ros::Subscriber subscriber;
     std::string topic_name;
@@ -224,8 +239,8 @@ private:
     tf::StampedTransform transform;
 
     //to allow exporting data
-   // Logger logger;
-    ros::Publisher latest_request;
+    Logger logger;
+    ros::Publisher latest_request_publisher;
     //path needs to be changed on your local machine. Choose your directory path where you want to save the logs.
     const char *path{"/home/oussama/catkin_ws/src/cartesian_trajectory_generator/generated_logs"};
 };
