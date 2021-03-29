@@ -62,7 +62,7 @@ public:
         getInitialPose(startPosition, startOrientation);
 
         ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ", startPosition[0], startPosition[1], startPosition[2], startOrientation.coeffs()[0], startOrientation.coeffs()[1], startOrientation.coeffs()[2], startOrientation.coeffs()[3]);
-        bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate);
+        bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate,data_points);
         if (!makePlan)
         {
             ROS_ERROR("Failed to generate a trajectory plan!");
@@ -79,7 +79,7 @@ public:
             std::vector<double> time_array;
             ctg.pop_position(position_array);
             ctg.pop_time(time_array);
-
+ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size(), time_array.size());
             //temporarly fill all values with the same orientaiton
             orientation_array.resize(position_array.size());
             std::fill(orientation_array.begin(), orientation_array.end(), startOrientation.coeffs());
@@ -89,7 +89,7 @@ public:
             poseStamped.pose.orientation.y = startOrientation.coeffs()[1];
             poseStamped.pose.orientation.z = startOrientation.coeffs()[2];
             poseStamped.pose.orientation.w = startOrientation.coeffs()[3];
-            ROS_INFO("%i, %i, %i", position_array.size(), orientation_array.size(), time_array.size());
+            
             if(logger.log_push_all(time_array, position_array, orientation_array)){
                 ROS_INFO("Trajectory saved");
             }else{
@@ -162,13 +162,14 @@ public:
         if (config.ready_to_send)
         {
             config.ready_to_send = false;
-            requested_position[0] = config.posX;
-            requested_position[1] = config.posY;
-            requested_position[2] = config.posZ;
-            requested_orientation.coeffs()[0] = config.orX;
-            requested_orientation.coeffs()[1] = config.orY;
-            requested_orientation.coeffs()[2] = config.orZ;
-            requested_orientation.coeffs()[3] = config.orW;
+            requested_position[0] = config.position_x;
+            requested_position[1] = config.position_y;
+            requested_position[2] = config.position_z;
+            requested_orientation.coeffs()[0] = config.orientation_x;
+            requested_orientation.coeffs()[1] = config.orientation_y;
+            requested_orientation.coeffs()[2] = config.orientation_z;
+            requested_orientation.coeffs()[3] = config.orientation_w;
+            data_points=config.data_points;
             ROS_INFO("Request from dynamic reconfig-server recieved");
         }
     }
@@ -229,6 +230,7 @@ private:
     Eigen::Vector3d endPosition;
     Eigen::Quaterniond endOrientation;
     ros::Rate rate = 1; //default val
+    int data_points{50};
 
     //temporary i guess
     std::string topicOfThisPublisher;
