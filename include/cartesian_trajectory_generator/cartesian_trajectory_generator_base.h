@@ -36,7 +36,7 @@ public:
     {
         return totTime;
     }
-    bool makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate, int data_points)
+    bool makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate)
     {
 
         double distance = (endPosition - startPosition).norm();
@@ -52,8 +52,8 @@ public:
         currentPosition = startPosition;
         currentOrientation = startOrientation;
         double time;
-        //to check if it starts going backwards
 
+        //estimate the total time
         if (accelerationDistance * 2 < distance)
         {
             totTime = timeConstantVel + accelerationTime * 2;
@@ -63,11 +63,13 @@ public:
             totTime = 2 * sqrt(distance / a_max);
         }
 
+        double calibration_frequency=20000; //higher=more accurate but slower , lower= viceversa
+
         while ((currentPosition - endPosition).norm() > tol)
 
         {
 
-            time = i * 1 / publish_rate;
+            time = i * 1 / calibration_frequency;
             time_array.push_back(time);
 
             if (time > totTime * 2)
@@ -123,9 +125,10 @@ public:
         velocity_array.push_back(0);
         position_array.push_back(endPosition);
 
-        //downsampling - uncomment to use
+        //downsampling 
         bool check=true; 
-        // check = down_sample(time_array, data_points) && down_sample(velocity_array, data_points) && down_sample(position_array, data_points);
+        int data_points=publish_rate/calibration_frequency*time_array.size();
+        check = down_sample(time_array, data_points) && down_sample(velocity_array, data_points) && down_sample(position_array, data_points);
         
         if (check)
         {

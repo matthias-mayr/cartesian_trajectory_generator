@@ -15,8 +15,6 @@ find_package(catkin REQUIRED
     eigen_conversions
     message_generation
     dynamic_reconfigure
-    rosbag
-    ros_logger
 )
 
 find_package(Eigen3 REQUIRED)

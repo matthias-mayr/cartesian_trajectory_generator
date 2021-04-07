@@ -3,7 +3,6 @@
 #include <vector>
 #include "cartesian_trajectory_generator_base.h"
 #include "cartesian_trajectory_generator/pose.h"
-#include "ros_logger/ros_logger.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "tf/transform_listener.h"
 #include <eigen_conversions/eigen_msg.h>
@@ -62,7 +61,7 @@ public:
         getInitialPose(startPosition, startOrientation);
 
         ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ", startPosition[0], startPosition[1], startPosition[2], startOrientation.coeffs()[0], startOrientation.coeffs()[1], startOrientation.coeffs()[2], startOrientation.coeffs()[3]);
-        bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate,data_points);
+        bool makePlan = ctg.makePlan(startPosition, startOrientation, endPosition, endOrientation, v_max, a_max, publish_rate);
         if (!makePlan)
         {
             ROS_ERROR("Failed to generate a trajectory plan!");
@@ -90,11 +89,6 @@ ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size
             poseStamped.pose.orientation.z = startOrientation.coeffs()[2];
             poseStamped.pose.orientation.w = startOrientation.coeffs()[3];
             
-            if(logger.log_push_all(time_array, position_array, orientation_array)){
-                ROS_INFO("Trajectory saved");
-            }else{
-                ROS_ERROR("Failed to save trajectory");
-            }
 
             int i = 0;
             double tol = 0.001;
@@ -107,6 +101,7 @@ ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size
                 poseStamped.pose.position.x = pos[0];
                 poseStamped.pose.position.y = pos[1];
                 poseStamped.pose.position.z = pos[2];
+
                 publish_command.publish(poseStamped);
                 ros::spinOnce();
                 rate.sleep();
@@ -169,16 +164,13 @@ ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size
             requested_orientation.coeffs()[1] = config.orientation_y;
             requested_orientation.coeffs()[2] = config.orientation_z;
             requested_orientation.coeffs()[3] = config.orientation_w;
-            data_points=config.data_points;
             ROS_INFO("Request from dynamic reconfig-server recieved");
         }
     }
 
     void run()
     {
-        logger.set_preferences(",", 1,1); //separator, print first line, overwrite
 
-        logger.log_to(path, "commanded_trajectory.txt");
         bool reset_info = false; //needed so we don't get spammed
 
         //dynamic reconfiguration
@@ -230,7 +222,7 @@ private:
     Eigen::Vector3d endPosition;
     Eigen::Quaterniond endOrientation;
     ros::Rate rate = 1; //default val
-    int data_points{50};
+
 
     //temporary i guess
     std::string topicOfThisPublisher;
@@ -240,9 +232,7 @@ private:
     tf::TransformListener listenPose;
     tf::StampedTransform transform;
 
-    //to allow exporting data
-    Logger logger;
+    //latest request published here
     ros::Publisher latest_request_publisher;
-    //path needs to be changed on your local machine. Choose your directory path where you want to save the logs.
-    const char *path{"/home/oussama/catkin_ws/src/cartesian_trajectory_generator/generated_logs"};
+
 };
