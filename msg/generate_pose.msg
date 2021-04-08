@@ -1,3 +1,0 @@
-geometry_msgs/PoseStamped poseStamped
-string topic_name
-float64 publish_rate

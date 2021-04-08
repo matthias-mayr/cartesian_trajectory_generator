@@ -1,0 +1,9 @@
+<launch>
+
+<rosparam file= "$(find cartesian_trajectory_generator)/config/params.yaml" />
+<node name= "cartesian_trajectory_generator" pkg= "cartesian_trajectory_generator" type="cartesian_trajectory_generator" output="screen">
+</node>
+
+
+
+</launch>
