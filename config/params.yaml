@@ -1,0 +1,6 @@
+cartesian_trajectory_generator:
+  topic_name: /bh/CartesianImpedance_trajectory_controller/target_pose 
+  publish_rate: 100
+  v_max: 0.5
+  a_max: 0.2 
+  frame_name: bh_link_ee

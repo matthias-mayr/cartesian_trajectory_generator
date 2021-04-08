@@ -15,11 +15,22 @@ public:
     cartesian_trajectory_generator_ros()
     {
         //initialization
-        topicOfThisPublisher = "/bh/CartesianImpedance_trajectory_controller/target_pose";
+        bool got_params =
+            _n.getParam("cartesian_trajectory_generator/topic_name", topic_name) &&
+            _n.getParam("cartesian_trajectory_generator/frame_name", frame_name) &&
+            _n.getParam("cartesian_trajectory_generator/publish_rate", publish_rate) &&
+            _n.getParam("cartesian_trajectory_generator/v_max", v_max) &&
+            _n.getParam("cartesian_trajectory_generator/a_max", a_max);
+        if (!got_params)
+        {
+            ROS_ERROR("Failed to load parameters. Did you forget to load the parameter server \"params.yaml\"?");
+            ros::shutdown();
+        }
+        rate=ros::Rate(publish_rate);
         poseStamped.header.frame_id = "world";
-        publish_command = _n.advertise<geometry_msgs::PoseStamped>(topicOfThisPublisher, 1); // commanded poseStamped
-        current_sequence = {false, false};                                                   //for dynamic reconfig
-
+        publish_command = _n.advertise<geometry_msgs::PoseStamped>(topic_name, 1); // commanded poseStamped
+        subscriber=_n.subscribe(topic_name, 1, &cartesian_trajectory_generator_ros::callBackSubscriber,this);
+        current_sequence = {false, false}; //for dynamic reconfig
         //For logging
         latest_request_publisher = _n.advertise<geometry_msgs::PoseStamped>("/bh/CartesianImpedance_trajectory_controller/latest_request", 1);
     }
@@ -78,7 +89,7 @@ public:
             std::vector<double> time_array;
             ctg.pop_position(position_array);
             ctg.pop_time(time_array);
-ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size(), time_array.size());
+            ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size(), time_array.size());
             //temporarly fill all values with the same orientaiton
             orientation_array.resize(position_array.size());
             std::fill(orientation_array.begin(), orientation_array.end(), startOrientation.coeffs());
@@ -88,7 +99,6 @@ ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size
             poseStamped.pose.orientation.y = startOrientation.coeffs()[1];
             poseStamped.pose.orientation.z = startOrientation.coeffs()[2];
             poseStamped.pose.orientation.w = startOrientation.coeffs()[3];
-            
 
             int i = 0;
             double tol = 0.001;
@@ -113,34 +123,11 @@ ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size
     }
     void printParameters()
     {
-        ROS_INFO_STREAM("Subscribing to "
+        ROS_INFO_STREAM("Publishing on topic: "
                         << "\"" << topic_name << "\"");
         ROS_INFO_STREAM("Frequency: " << publish_rate);
         ROS_INFO_STREAM("v_max= " << v_max);
         ROS_INFO_STREAM("a_max= " << a_max);
-    }
-    void setParameters(std::string &topic_name, double &publish_rate, double &v_max, double &a_max, std::string frame_name)
-    {
-        this->topic_name = topic_name;
-
-        if (topic_name.compare(topicOfThisPublisher) != 0)
-        {
-            ROS_ERROR_STREAM("Topic \"" << topic_name << "\" does not exist, shutting down");
-            ros::shutdown();
-        }
-
-        subscriber = _n.subscribe(topic_name, 1, &cartesian_trajectory_generator_ros::callBackSubscriber, this);
-        this->publish_rate = publish_rate;
-        this->v_max = v_max;
-        this->a_max = a_max;
-        this->frame_name = frame_name;
-        rate = ros::Rate(publish_rate);
-        _n.setParam("topic_name", topic_name);
-        _n.setParam("publish_rate", publish_rate);
-        _n.setParam("v_max", v_max);
-        _n.setParam("a_max", a_max);
-        printParameters();
-        Eigen::Vector3d v;
     }
 
     void callBackSubscriber(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -190,7 +177,7 @@ ROS_INFO("pos: %i, or: %i, t: %i", position_array.size(), orientation_array.size
             {
                 if (!reset_info)
                 {
-
+                    printParameters();
                     ROS_INFO("Waiting for request");
 
                     reset_info = true;
@@ -217,16 +204,14 @@ private:
     std::string topic_name;
     double publish_rate;
     double v_max;
-    double a_max;
+    double a_max; 
+    std::string frame_name;
     cartesian_trajectory_generator_base ctg;
     Eigen::Vector3d endPosition;
     Eigen::Quaterniond endOrientation;
     ros::Rate rate = 1; //default val
 
 
-    //temporary i guess
-    std::string topicOfThisPublisher;
-    std::string frame_name;
 
     //for initial pose
     tf::TransformListener listenPose;
@@ -234,5 +219,4 @@ private:
 
     //latest request published here
     ros::Publisher latest_request_publisher;
-
 };

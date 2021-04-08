@@ -7,25 +7,14 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "cartesian_trajectory_generator");
     
-    int nrInputs=6;
+    int nrInputs=1;
     if (argc != nrInputs)
     {
         ROS_INFO_STREAM("Invalid number of inputs: " << argc << "/" << nrInputs);
         return 1;
     }
     ros::NodeHandle n;
-    
     cartesian_trajectory_generator_ros gen;
-  
-   std::string topic_name = argv[1];
-    std::string frame_name=argv[2];
-    double publish_rate = atof(argv[3]);
-    double v_max = atof(argv[4]);
-    double a_max = atof(argv[5]);
-    gen.setParameters(topic_name, publish_rate, v_max, a_max,frame_name);
-
-
     gen.run();
-
     return 0;
 }
