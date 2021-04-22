@@ -105,8 +105,11 @@ public:
                 double currentDistance = (currentPosition - startPosition).norm();
                 if (currentDistance >= distance / 2)
                 {
-                    double v_peak = sqrt(2 * a_max * distance / 2);
-                    double time_peak = v_peak / a_max;
+                   // double v_peak = sqrt(2 * a_max * distance / 2);
+                    // double time_peak = v_peak / a_max;
+                    double time_peak = totTime/2;
+                    double v_peak =a_max*time_peak;
+
                     if (time <= time_peak * 2)
                     {
                         v = v_peak - a_max * (time - time_peak);
