@@ -54,14 +54,14 @@ public:
   /*! \brief Set a new distance. */
   void set_distance(double dist)
   {
-    if (dist > 0)
+    if (dist >= 0)
     {
       dist_ = dist;
       parameterize();
     }
     else
     {
-      throw std::invalid_argument("Distances must be positive.");
+      throw std::invalid_argument("Distances must not be negative.");
     }
   }
 
