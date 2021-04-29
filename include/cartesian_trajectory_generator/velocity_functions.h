@@ -117,13 +117,13 @@ public:
   /*! \brief Get the total distance needed to decelerate. */
   double get_dec_dist()
   {
-    return get_dec_dist(get_dec_time());
+    return get_dec_dist(get_dec_time(), v_max_);
   }
 
   /*! \brief Get the distance needed to accelerate until a given time. */
-  double get_dec_dist(double time)
+  double get_dec_dist(double time, double v_start)
   {
-    return 0.5 * dec_ * std::pow(time, 2.0);
+    return -0.5 * dec_ * std::pow(time, 2.0) + time * v_start;
   }
 
   /*! \brief Get the time needed to accelerate. */
@@ -181,7 +181,7 @@ public:
     // Deceleration phase
     else if (time > (t_acc_ + t_const_))
     {
-      return get_acc_dist(t_acc_) + v_max_ * t_const_ + get_dec_dist(time - t_acc_ - t_const_);
+      return get_acc_dist(t_acc_) + v_max_ * t_const_ + get_dec_dist(time - t_acc_ - t_const_, get_velocity(t_acc_));
     }
 
     else if (time > t_acc_)
