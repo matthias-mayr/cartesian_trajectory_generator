@@ -1,195 +1,118 @@
+#pragma once
 
 #include <Eigen/Geometry>
-#include <iostream>
-#include <vector>
-#include <ros/ros.h>
+#include <exception>
+#include <memory>
+
+#include <cartesian_trajectory_generator/velocity_functions.h>
+
+namespace cartesian_trajectory_generator
+{
+template <typename v_trans_t, typename v_rot_t>
 class cartesian_trajectory_generator_base
 {
 public:
-    std::vector<Eigen::Vector3d> pop_position(std::vector<Eigen::Vector3d> &position)
+  cartesian_trajectory_generator_base() = default;
+  ~cartesian_trajectory_generator_base() = default;
+
+  Eigen::Vector3d get_position(double time)
+  {
+    return start_position_ + trans->get_distance(trans_t_ * time) * trans_vec_;
+  }
+
+  Eigen::Quaterniond get_orientation(double time)
+  {
+    if (d_rot_ == 0.)
     {
-        position = position_array;
-        position_array.clear();
-        return position;
+      return end_orientation_;
     }
+    return start_orientation_.slerp((rot->get_distance(rot_t_ * time) / d_rot_), end_orientation_);
+  }
 
-    std::vector<Eigen::Quaterniond> pop_orientation()
+  double get_trans_distance(double time)
+  {
+    return trans->get_distance(trans_t_ * time);
+  }
+
+  double get_rot_distance(double time)
+  {
+    return rot->get_distance(rot_t_ * time);
+  }
+
+  double get_trans_vel(double time)
+  {
+    return trans->get_velocity(trans_t_ * time);
+  }
+
+  double get_rot_vel(double time)
+  {
+    return rot->get_velocity(rot_t_ * time);
+  }
+
+  std::shared_ptr<v_trans_t> get_translation_obj()
+  {
+    return trans;
+  }
+
+  std::shared_ptr<v_rot_t> get_rotation_obj()
+  {
+    return rot;
+  }
+
+  double get_total_time()
+  {
+    return time_;
+  }
+
+  bool update_goal(const Eigen::Vector3d& startPosition, const Eigen::Quaterniond& startOrientation,
+                   const Eigen::Vector3d& endPosition, const Eigen::Quaterniond& endOrientation)
+  {
+    trans_t_ = rot_t_ = 1.0;
+    // Translation vector and distance
+    start_position_ = startPosition;
+    trans_vec_ = endPosition - startPosition;
+    double d_trans = (endPosition - startPosition).norm();
+    trans_vec_.normalize();
+    // Rotation distance
+    d_rot_ = startOrientation.angularDistance(endOrientation);
+    end_orientation_ = endOrientation;
+    start_orientation_ = startOrientation;
+    // Parameterize velocity functions
+    trans->set_distance(d_trans);
+    rot->set_distance(d_rot_);
+    // Synchronize them if needed
+    if (synchronized_)
     {
-        std::vector<Eigen::Quaterniond> temp = orientation_array;
-        orientation_array.clear();
+      if (trans->get_time() > rot->get_time())
+      {
+        rot_t_ = rot->get_time() / trans->get_time();
+      }
+      else if (rot->get_time() > trans->get_time())
+      {
+        trans_t_ = trans->get_time() / rot->get_time();
+      }
     }
+    time_ = std::max(trans->get_time(), rot->get_time());
+  }
 
-    std::vector<double> pop_velocity(std::vector<double> &velocity)
-    {
-        velocity = velocity_array;
-        velocity_array.clear();
-        return velocity;
-    }
-
-    std::vector<double> pop_time(std::vector<double> &time)
-    {
-        time = time_array;
-        time_array.clear();
-        return time;
-    }
-    double get_total_time()
-    {
-        return totTime;
-    }
-    bool makePlan(Eigen::Vector3d startPosition, Eigen::Quaterniond startOrientation, Eigen::Vector3d endPosition, Eigen::Quaterniond endOrientation, double v_max, double a_max, double publish_rate)
-    {
-
-        double distance = (endPosition - startPosition).norm();
-        Eigen::Vector3d direction = (endPosition - startPosition) / distance; //normalized direction
-        double accelerationDistance = v_max * v_max / (2 * a_max);
-        double accelerationTime = v_max / a_max;
-        double distanceAcceleration = v_max * accelerationTime / 2;
-        double distanceConstantVel = distance - 2 * distanceAcceleration;
-        double timeConstantVel = distanceConstantVel / v_max;
-
-        int i = 0;
-        double tol = 0.0001;
-        currentPosition = startPosition;
-        currentOrientation = startOrientation;
-        double time;
-
-        //estimate the total time
-        if (accelerationDistance * 2 < distance)
-        {
-            totTime = timeConstantVel + accelerationTime * 2;
-        }
-        else
-        {
-            totTime = 2 * sqrt(distance / a_max);
-        }
-
-        double calibration_frequency=20000; //higher=more accurate but slower , lower= viceversa
-
-        while ((currentPosition - endPosition).norm() > tol)
-
-        {
-
-            time = i * 1 / calibration_frequency;
-            time_array.push_back(time);
-
-            if (time > totTime * 2)
-            { //multiplited with 2 just to be sure
-                return false;
-            }
-            if (accelerationDistance * 2 < distance) //first case: we will reach maximum velocity and be able to deaccelerate before reaching endpose
-            {
-
-                if (time < accelerationTime) // acceleration phase
-                {
-                    v = a_max * time;
-                    currentPosition = startPosition + 0.5 * a_max * time * time * direction;
-                }
-                else
-                {
-                    v = v_max; //max velocity reached
-                    currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v * (time - accelerationTime) * direction;
-                    double currentDistance = (currentPosition - startPosition).norm();
-
-                    if (distanceAcceleration >= distance - currentDistance)
-                    { //if its time to slow down
-                        double newtime = time - timeConstantVel - accelerationTime;
-                        v = v_max - a_max * newtime;
-                        currentPosition = startPosition + 0.5 * a_max * accelerationTime * accelerationTime * direction + v_max * (timeConstantVel)*direction - 0.5 * a_max * newtime * newtime * direction + v_max * newtime * direction;
-                    }
-                }
-            }
-            else
-            {
-                v = a_max * time;
-                currentPosition = startPosition + 0.5 * a_max * time * time * direction;
-                double currentDistance = (currentPosition - startPosition).norm();
-                if (currentDistance >= distance / 2)
-                {
-                    double v_peak = sqrt(2 * a_max * distance / 2);
-                    double time_peak = v_peak / a_max;
-                    if (time <= time_peak * 2)
-                    {
-                        v = v_peak - a_max * (time - time_peak);
-
-                        currentPosition = startPosition + 0.5 * a_max * time_peak * time_peak * direction - 0.5 * a_max * (time - time_peak) * (time - time_peak) * direction + v_peak * (time - time_peak) * direction;
-                    }
-                }
-            }
-
-            velocity_array.push_back(v);
-            position_array.push_back(currentPosition);
-            //orientation_array.push_back(currentOrientation);
-            i++;
-        }
-        time_array.push_back(time);
-        velocity_array.push_back(0);
-        position_array.push_back(endPosition);
-
-        //downsampling 
-        bool check=true; 
-        int data_points=publish_rate/calibration_frequency*time_array.size();
-        check = down_sample(time_array, data_points) && down_sample(velocity_array, data_points) && down_sample(position_array, data_points);
-        
-        if (check)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+  void set_synchronized(bool sync)
+  {
+    synchronized_ = sync;
+  }
 
 private:
-    //samples down the vector v to datapoints+1 elements
-    bool down_sample(std::vector<double> &v, int data_points)
-    {
-        if (data_points >= v.size() || data_points <= 2)
-        {
-            return false;
-        }
-        std::vector<double> v_s;
-        int jump = v.size() / data_points;
-        int i = 0;
-        while (i < data_points)
-        {
-            v_s.push_back(v[jump * i]);
-            i++;
-        }
-        v_s.push_back(v[v.size() - 1]);
-        v.clear();
-        v = v_s;
-        return true;
-    }
+  std::shared_ptr<v_trans_t> trans{ new v_trans_t };
+  std::shared_ptr<v_rot_t> rot{ new v_rot_t };
 
-    bool down_sample(std::vector<Eigen::Vector3d> &v, int data_points)
-    {
-
-        if (data_points >= v.size() || data_points <= 2)
-        {
-            return false;
-        }
-        std::vector<Eigen::Vector3d> v_s;
-        int jump = v.size() / data_points;
-        int i = 0;
-        while (i < data_points)
-        {
-            v_s.push_back(v[jump * i]);
-            i++;
-        }
-        v_s.push_back(v[v.size() - 1]);
-        v.clear();
-        v = v_s;
-        return true;
-        return true;
-    }
-
-    Eigen::Vector3d currentPosition;
-    Eigen::Quaterniond currentOrientation;
-    double v = 0;
-    std::vector<Eigen::Vector3d> position_array;
-    std::vector<Eigen::Quaterniond> orientation_array;
-    std::vector<double> velocity_array;
-    std::vector<double> time_array;
-    double totTime;
+  bool synchronized_{ false };
+  double trans_t_{ 1.0 };
+  double rot_t_{ 1.0 };
+  Eigen::Vector3d start_position_;
+  Eigen::Vector3d trans_vec_;
+  Eigen::Quaterniond start_orientation_;
+  Eigen::Quaterniond end_orientation_;
+  double d_rot_;
+  double time_{ 0 };
 };
+
+}  // namespace cartesian_trajectory_generator

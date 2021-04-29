@@ -1,6 +1,11 @@
 cartesian_trajectory_generator:
-  topic_name: /bh/CartesianImpedance_trajectory_controller/target_pose 
+  pose_topic: /bh/CartesianImpedance_trajectory_controller/target_pose
+  goal_topic: /bh/CartesianImpedance_trajectory_controller/goal
+  frame_name: world
+  ee_link: bh_link_ee
   publish_rate: 100
-  v_max: 0.5
-  a_max: 0.2 
-  frame_name: bh_link_ee
+  trans_v_max: 0.5
+  rot_v_max: 0.5
+  trans_a: 0.2 
+  rot_a: 0.5
+  sync: true
