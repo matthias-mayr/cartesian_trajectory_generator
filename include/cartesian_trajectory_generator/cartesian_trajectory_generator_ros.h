@@ -64,6 +64,7 @@ public:
     ctg_.set_synchronized(synced);
 
     config_pose_server.setCallback(boost::bind(&cartesian_trajectory_generator_ros::config_callback, this, _1, _2));
+    traj_start_ = ros::Time::now();
   }
 
   void getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
@@ -153,7 +154,7 @@ public:
     Eigen::Quaterniond rot{ Eigen::Quaterniond() };
     while (n_.ok())
     {
-      if (ros::Time::now() - traj_start_ <= ros::Duration(1.1 * ctg_.get_total_time()))
+      if (ros::Time::now() - traj_start_ < ros::Duration(1.1 * ctg_.get_total_time()))
       {
         t = (ros::Time::now() - traj_start_).toSec();
         pos = ctg_.get_position(t);
