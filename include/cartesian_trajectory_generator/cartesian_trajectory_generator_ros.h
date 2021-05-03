@@ -67,7 +67,7 @@ public:
     traj_start_ = ros::Time::now();
   }
 
-  void getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
+  bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
   {
     tf::StampedTransform transform;
     try
@@ -78,10 +78,11 @@ public:
     catch (tf::TransformException &ex)
     {
       ROS_ERROR("%s", ex.what());
-      return;
+      return false;
     }
     tf::vectorTFToEigen(transform.getOrigin(), startPosition);
     tf::quaternionTFToEigen(transform.getRotation(), startOrientation);
+    return true;
   }
 
   void update_goal()
@@ -133,25 +134,33 @@ public:
     }
   }
 
-  void publish(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
+  void publish_msg(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
   {
     pose_msg_.header.stamp = ros::Time::now();
     tf::pointEigenToMsg(pos, pose_msg_.pose.position);
     tf::quaternionEigenToMsg(rot, pose_msg_.pose.orientation);
     pub_pose_.publish(pose_msg_);
-    // Publish tf of the ref pose
+  }
+
+  void publish_tf(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
+  {
     tf::vectorEigenToTF(pos, tf_pos_);
     tf_br_transform_.setOrigin(tf_pos_);
     tf::quaternionEigenToTF(rot, tf_rot_);
     tf_br_transform_.setRotation(tf_rot_);
-    tf_br_.sendTransform(tf::StampedTransform(tf_br_transform_, ros::Time::now(), frame_name_, "ref_pose"));
+    tf_br_.sendTransform(tf::StampedTransform(tf_br_transform_, ros::Time::now(), frame_name_, ee_link_ + "_ref_pose"));
   }
 
   void run()
   {
+    while (!getInitialPose(requested_position_, requested_orientation_))
+    {
+      ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
+      ros::Duration(1.0).sleep();
+    }
     double t{ 0. };
-    Eigen::Vector3d pos{ Eigen::Vector3d::Zero() };
-    Eigen::Quaterniond rot{ Eigen::Quaterniond() };
+    Eigen::Vector3d pos{ requested_position_ };
+    Eigen::Quaterniond rot{ requested_orientation_ };
     while (n_.ok())
     {
       if (ros::Time::now() - traj_start_ < ros::Duration(1.1 * ctg_.get_total_time()))
@@ -159,8 +168,9 @@ public:
         t = (ros::Time::now() - traj_start_).toSec();
         pos = ctg_.get_position(t);
         rot = ctg_.get_orientation(t);
-        publish(pos, rot);
+        publish_msg(pos, rot);
       }
+      publish_tf(pos, rot);
       ros::spinOnce();
       rate_.sleep();
     }
