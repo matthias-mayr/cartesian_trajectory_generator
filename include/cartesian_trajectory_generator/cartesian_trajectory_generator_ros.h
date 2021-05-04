@@ -107,12 +107,23 @@ public:
     {
       tf::pointMsgToEigen(msg->pose.position, requested_position_);
       tf::quaternionMsgToEigen(msg->pose.orientation, requested_orientation_);
-      update_goal();
     }
     else
     {
-      ROS_ERROR_STREAM("Goal in wrong frame. Please use frame " << frame_name_);
+      try
+      {
+        geometry_msgs::PoseStamped t_msg;
+        tf_listener_.transformPose(frame_name_, *msg, t_msg);
+        tf::pointMsgToEigen(t_msg.pose.position, requested_position_);
+        tf::quaternionMsgToEigen(t_msg.pose.orientation, requested_orientation_);
+      }
+      catch (tf::TransformException ex)
+      {
+        ROS_ERROR("%sDid not update goal.", ex.what());
+        return;
+      }
     }
+    update_goal();
   }
 
   void config_callback(cartesian_trajectory_generator::pose_paramConfig &config, uint32_t level)
