@@ -19,33 +19,12 @@ find_package(catkin REQUIRED
 
 find_package(Eigen3 REQUIRED)
 
-
-
-## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   pose.msg
- )
-
-## Generate services in the 'srv' folder
- #add_service_files(
- #  FILES
-#
-#)
-
 ## Generate actions in the 'action' folder
 # add_action_files(
 #   FILES
 #   Action1.action
 #   Action2.action
 # )
-
- generate_messages(
-   DEPENDENCIES
-   std_msgs  
-   geometry_msgs
- )
-
 
  generate_dynamic_reconfigure_options(
    cfg/pose_param.cfg
@@ -55,9 +34,8 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES cartesian_trajectory_generator
-  CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions message_runtime ros_logger
+  CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions message_runtime
   DEPENDS Eigen3
-
 )
 
 ###########
@@ -72,18 +50,14 @@ include_directories(
   ${Eigen_INCLUDE_DIRS}
 )
 
-
 add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp)
 
-
 add_dependencies(
-${PROJECT_NAME} 
-${${PROJECT_NAME}_EXPORTED_TARGETS} 
-${catkin_EXPORTED_TARGETS} 
-${PROJECT_NAME}_gencfg
+  ${PROJECT_NAME} 
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+  ${catkin_EXPORTED_TARGETS} 
+  ${PROJECT_NAME}_gencfg
 )
-
-
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
@@ -91,7 +65,3 @@ target_link_libraries(${PROJECT_NAME}
   ${Eigen_LIBRARIES}
   ${ros_logger_LIBRARIES}
 )
-
-
-
-

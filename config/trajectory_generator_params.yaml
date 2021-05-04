@@ -1,0 +1,11 @@
+pose_topic: ref_pose
+new_goal_topic: new_goal
+current_goal_topic: current_goal
+frame_name: world
+ee_link: ee_link
+publish_rate: 100
+trans_v_max: 0.5
+rot_v_max: 0.5
+trans_a: 0.2 
+rot_a: 0.5
+sync: true

@@ -20,7 +20,8 @@ public:
   {
     double publish_rate{ 0 };
     std::string pose_topic;
-    std::string goal_topic;
+    std::string new_goal_topic;
+    std::string current_goal_topic;
     double trans_v_max_{ 0 };
     double rot_v_max_{ 0 };
     double trans_a_{ 0 };
@@ -28,27 +29,23 @@ public:
     double trans_d_{ 0 };
     double rot_d_{ 0 };
     bool synced{ false };
-    if (!(n_.getParam("cartesian_trajectory_generator/pose_topic", pose_topic) &&
-          n_.getParam("cartesian_trajectory_generator/goal_topic", goal_topic) &&
-          n_.getParam("cartesian_trajectory_generator/frame_name", frame_name_) &&
-          n_.getParam("cartesian_trajectory_generator/ee_link", ee_link_) &&
-          n_.getParam("cartesian_trajectory_generator/publish_rate", publish_rate) &&
-          n_.getParam("cartesian_trajectory_generator/trans_v_max", trans_v_max_) &&
-          n_.getParam("cartesian_trajectory_generator/rot_v_max", rot_v_max_) &&
-          n_.getParam("cartesian_trajectory_generator/trans_a", trans_a_) &&
-          n_.getParam("cartesian_trajectory_generator/rot_a", rot_a_)))
+    if (!(n_.getParam("pose_topic", pose_topic) && n_.getParam("new_goal_topic", new_goal_topic) &&
+          n_.getParam("current_goal_topic", current_goal_topic) && n_.getParam("frame_name", frame_name_) &&
+          n_.getParam("ee_link", ee_link_) && n_.getParam("publish_rate", publish_rate) &&
+          n_.getParam("trans_v_max", trans_v_max_) && n_.getParam("rot_v_max", rot_v_max_) &&
+          n_.getParam("trans_a", trans_a_) && n_.getParam("rot_a", rot_a_)))
     {
       ROS_ERROR("Failed to load required parameters. Are they load to the parameter server?");
       ros::shutdown();
     }
-    n_.param<double>("cartesian_trajectory_generator/trans_d", trans_d_, trans_a_);
-    n_.param<double>("cartesian_trajectory_generator/rot_d", rot_d_, trans_a_);
-    n_.param<bool>("cartesian_trajectory_generator/sync", synced, false);
+    n_.param<double>("trans_d", trans_d_, trans_a_);
+    n_.param<double>("rot_d", rot_d_, trans_a_);
+    n_.param<bool>("sync", synced, false);
 
     rate_ = ros::Rate(publish_rate);
     pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
-    pub_goal_ = n_.advertise<geometry_msgs::PoseStamped>("/test", 1);
-    sub_goal_ = n_.subscribe(goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
+    pub_goal_ = n_.advertise<geometry_msgs::PoseStamped>(current_goal_topic, 1);
+    sub_goal_ = n_.subscribe(new_goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
 
     pose_msg_.header.frame_id = frame_name_;
     latest_poseStamped_request.header.frame_id = frame_name_;
@@ -87,6 +84,7 @@ public:
 
   void update_goal()
   {
+    requested_orientation_.normalize();
     // publishing latest request once
     tf::pointEigenToMsg(requested_position_, latest_poseStamped_request.pose.position);
     tf::quaternionEigenToMsg(requested_orientation_, latest_poseStamped_request.pose.orientation);
@@ -109,12 +107,23 @@ public:
     {
       tf::pointMsgToEigen(msg->pose.position, requested_position_);
       tf::quaternionMsgToEigen(msg->pose.orientation, requested_orientation_);
-      update_goal();
     }
     else
     {
-      ROS_ERROR_STREAM("Goal in wrong frame. Please use frame " << frame_name_);
+      try
+      {
+        geometry_msgs::PoseStamped t_msg;
+        tf_listener_.transformPose(frame_name_, *msg, t_msg);
+        tf::pointMsgToEigen(t_msg.pose.position, requested_position_);
+        tf::quaternionMsgToEigen(t_msg.pose.orientation, requested_orientation_);
+      }
+      catch (tf::TransformException ex)
+      {
+        ROS_ERROR("%sDid not update goal.", ex.what());
+        return;
+      }
     }
+    update_goal();
   }
 
   void config_callback(cartesian_trajectory_generator::pose_paramConfig &config, uint32_t level)
@@ -158,6 +167,7 @@ public:
       ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
       ros::Duration(1.0).sleep();
     }
+    ROS_INFO_STREAM("Setup complete.");
     double t{ 0. };
     Eigen::Vector3d pos{ requested_position_ };
     Eigen::Quaterniond rot{ requested_orientation_ };
