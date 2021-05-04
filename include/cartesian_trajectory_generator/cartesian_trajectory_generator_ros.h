@@ -29,23 +29,18 @@ public:
     double trans_d_{ 0 };
     double rot_d_{ 0 };
     bool synced{ false };
-    if (!(n_.getParam("cartesian_trajectory_generator/pose_topic", pose_topic) &&
-          n_.getParam("cartesian_trajectory_generator/new_goal_topic", new_goal_topic) &&
-          n_.getParam("cartesian_trajectory_generator/current_goal_topic", current_goal_topic) &&
-          n_.getParam("cartesian_trajectory_generator/frame_name", frame_name_) &&
-          n_.getParam("cartesian_trajectory_generator/ee_link", ee_link_) &&
-          n_.getParam("cartesian_trajectory_generator/publish_rate", publish_rate) &&
-          n_.getParam("cartesian_trajectory_generator/trans_v_max", trans_v_max_) &&
-          n_.getParam("cartesian_trajectory_generator/rot_v_max", rot_v_max_) &&
-          n_.getParam("cartesian_trajectory_generator/trans_a", trans_a_) &&
-          n_.getParam("cartesian_trajectory_generator/rot_a", rot_a_)))
+    if (!(n_.getParam("pose_topic", pose_topic) && n_.getParam("new_goal_topic", new_goal_topic) &&
+          n_.getParam("current_goal_topic", current_goal_topic) && n_.getParam("frame_name", frame_name_) &&
+          n_.getParam("ee_link", ee_link_) && n_.getParam("publish_rate", publish_rate) &&
+          n_.getParam("trans_v_max", trans_v_max_) && n_.getParam("rot_v_max", rot_v_max_) &&
+          n_.getParam("trans_a", trans_a_) && n_.getParam("rot_a", rot_a_)))
     {
       ROS_ERROR("Failed to load required parameters. Are they load to the parameter server?");
       ros::shutdown();
     }
-    n_.param<double>("cartesian_trajectory_generator/trans_d", trans_d_, trans_a_);
-    n_.param<double>("cartesian_trajectory_generator/rot_d", rot_d_, trans_a_);
-    n_.param<bool>("cartesian_trajectory_generator/sync", synced, false);
+    n_.param<double>("trans_d", trans_d_, trans_a_);
+    n_.param<double>("rot_d", rot_d_, trans_a_);
+    n_.param<bool>("sync", synced, false);
 
     rate_ = ros::Rate(publish_rate);
     pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);

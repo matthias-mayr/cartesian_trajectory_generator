@@ -27,14 +27,14 @@ Open three terminals:
 In the rqt-gui, choose a new goal pose and click the "ready_to_send" button.
 
 The demo will use three topics:
-1. `/current_goal`: Publishes the current goal
-2. `/new_goal`: Accepts new goals
-3. `/ref_pose`: Publishes the current reference pose
+1. `/cartesian_trajectory_generator/current_goal`: Publishes the current goal
+2. `/cartesian_trajectory_generator/new_goal`: Accepts new goals
+3. `/cartesian_trajectory_generator/ref_pose`: Publishes the current reference pose
 
 
-You can send new goal to `/new_goal` like this:
+You can send new goal to `/cartesian_trajectory_generator/new_goal` like this:
 ```
-$ rostopic pub /new_goal geometry_msgs/PoseStamped "header:
+$ rostopic pub /cartesian_trajectory_generator/new_goal geometry_msgs/PoseStamped "header:
   seq: 0
   stamp:
     secs: 0

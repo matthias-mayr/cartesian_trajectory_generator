@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <launch>
 
-<rosparam file= "$(find cartesian_trajectory_generator)/config/trajectory_generator_params.yaml" />
-<node name= "cartesian_trajectory_generator" pkg= "cartesian_trajectory_generator" type="cartesian_trajectory_generator" output="screen">
-</node>
+<group ns="cartesian_trajectory_generator">
+    <rosparam file= "$(find cartesian_trajectory_generator)/config/trajectory_generator_params.yaml" />
+    <node name= "cartesian_trajectory_generator" pkg= "cartesian_trajectory_generator" type="cartesian_trajectory_generator" output="screen">
+    </node>
+</group>
 
 </launch>
