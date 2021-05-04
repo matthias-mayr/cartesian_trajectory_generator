@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+
+<node pkg="tf" type="static_transform_publisher" name="test_broadcaster" args="1 0 0 0 0 0 1 world ee_link 100" />
+
+</launch>
