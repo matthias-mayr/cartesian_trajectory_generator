@@ -20,7 +20,8 @@ public:
   {
     double publish_rate{ 0 };
     std::string pose_topic;
-    std::string goal_topic;
+    std::string new_goal_topic;
+    std::string current_goal_topic;
     double trans_v_max_{ 0 };
     double rot_v_max_{ 0 };
     double trans_a_{ 0 };
@@ -29,7 +30,8 @@ public:
     double rot_d_{ 0 };
     bool synced{ false };
     if (!(n_.getParam("cartesian_trajectory_generator/pose_topic", pose_topic) &&
-          n_.getParam("cartesian_trajectory_generator/goal_topic", goal_topic) &&
+          n_.getParam("cartesian_trajectory_generator/new_goal_topic", new_goal_topic) &&
+          n_.getParam("cartesian_trajectory_generator/current_goal_topic", current_goal_topic) &&
           n_.getParam("cartesian_trajectory_generator/frame_name", frame_name_) &&
           n_.getParam("cartesian_trajectory_generator/ee_link", ee_link_) &&
           n_.getParam("cartesian_trajectory_generator/publish_rate", publish_rate) &&
@@ -47,8 +49,8 @@ public:
 
     rate_ = ros::Rate(publish_rate);
     pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
-    pub_goal_ = n_.advertise<geometry_msgs::PoseStamped>("/test", 1);
-    sub_goal_ = n_.subscribe(goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
+    pub_goal_ = n_.advertise<geometry_msgs::PoseStamped>(current_goal_topic, 1);
+    sub_goal_ = n_.subscribe(new_goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
 
     pose_msg_.header.frame_id = frame_name_;
     latest_poseStamped_request.header.frame_id = frame_name_;
