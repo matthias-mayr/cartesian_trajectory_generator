@@ -49,15 +49,12 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>  
-  <depend>roscpp</depend>
   <depend>geometry_msgs</depend>
+  <depend>roscpp</depend>
   <depend>tf</depend>
   <depend>tf_conversions</depend>
   <depend>eigen_conversions</depend>
-
-<build_depend>ros_logger</build_depend>  
-<build_export_depend>ros_logger</build_export_depend>
-
+  <depend>dynamic_reconfigure</depend>
 
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>

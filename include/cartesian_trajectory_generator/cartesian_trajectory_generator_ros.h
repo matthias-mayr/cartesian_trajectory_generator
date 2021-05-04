@@ -160,6 +160,7 @@ public:
       ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
       ros::Duration(1.0).sleep();
     }
+    ROS_INFO_STREAM("Setup complete.");
     double t{ 0. };
     Eigen::Vector3d pos{ requested_position_ };
     Eigen::Quaterniond rot{ requested_orientation_ };

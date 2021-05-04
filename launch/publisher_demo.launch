@@ -2,5 +2,5 @@
 <launch>
 
 <node pkg="tf" type="static_transform_publisher" name="test_broadcaster" args="1 0 0 0 0 0 1 world ee_link 100" />
-
+<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cartesian_trajectory_generator)/res/tf.rviz" />
 </launch>
