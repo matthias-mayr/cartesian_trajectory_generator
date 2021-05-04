@@ -84,6 +84,7 @@ public:
 
   void update_goal()
   {
+    requested_orientation_.normalize();
     // publishing latest request once
     tf::pointEigenToMsg(requested_position_, latest_poseStamped_request.pose.position);
     tf::quaternionEigenToMsg(requested_orientation_, latest_poseStamped_request.pose.orientation);
