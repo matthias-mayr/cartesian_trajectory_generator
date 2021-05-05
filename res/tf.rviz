@@ -76,6 +76,15 @@ Visualization Manager:
             {}
       Update Interval: 0
       Value: true
+    - Class: rviz/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Name: InteractiveMarkers
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: false
+      Update Topic: /cartesian_trajectory_generator/cartesian_trajectory_generator/update
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
