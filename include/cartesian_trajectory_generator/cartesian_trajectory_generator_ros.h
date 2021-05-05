@@ -6,6 +6,8 @@
 #include <dynamic_reconfigure/server.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <interactive_markers/interactive_marker_server.h>
+#include <interactive_markers/menu_handler.h>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
@@ -13,6 +15,66 @@
 
 namespace cartesian_trajectory_generator
 {
+visualization_msgs::Marker makeBox(visualization_msgs::InteractiveMarker &msg)
+{
+  visualization_msgs::Marker marker;
+
+  marker.type = visualization_msgs::Marker::SPHERE;
+  marker.scale.x = msg.scale * 0.45;
+  marker.scale.y = msg.scale * 0.45;
+  marker.scale.z = msg.scale * 0.45;
+  marker.color.r = 0.5;
+  marker.color.g = 0.8;
+  marker.color.b = 0.8;
+  marker.color.a = 1.0;
+
+  return marker;
+}
+
+visualization_msgs::InteractiveMarkerControl &makeBoxControl(visualization_msgs::InteractiveMarker &msg)
+{
+  visualization_msgs::InteractiveMarkerControl control;
+  control.always_visible = true;
+  control.markers.push_back(makeBox(msg));
+  msg.controls.push_back(control);
+
+  return msg.controls.back();
+}
+
+void addMarkerControls(visualization_msgs::InteractiveMarker &int_marker)
+{
+  visualization_msgs::InteractiveMarkerControl control;
+  tf::Quaternion orien(1.0, 0.0, 0.0, 1.0);
+  orien.normalize();
+  tf::quaternionTFToMsg(orien, control.orientation);
+  control.name = "rotate_x";
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_AXIS;
+  int_marker.controls.push_back(control);
+  control.name = "move_x";
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_AXIS;
+  int_marker.controls.push_back(control);
+
+  orien = tf::Quaternion(0.0, 1.0, 0.0, 1.0);
+  orien.normalize();
+  tf::quaternionTFToMsg(orien, control.orientation);
+  control.name = "rotate_z";
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_AXIS;
+  int_marker.controls.push_back(control);
+  control.name = "move_z";
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_AXIS;
+  int_marker.controls.push_back(control);
+
+  orien = tf::Quaternion(0.0, 0.0, 1.0, 1.0);
+  orien.normalize();
+  tf::quaternionTFToMsg(orien, control.orientation);
+  control.name = "rotate_y";
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_AXIS;
+  int_marker.controls.push_back(control);
+  control.name = "move_y";
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_AXIS;
+  int_marker.controls.push_back(control);
+}
+
 class cartesian_trajectory_generator_ros
 {
 public:
@@ -48,7 +110,7 @@ public:
     sub_goal_ = n_.subscribe(new_goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
 
     pose_msg_.header.frame_id = frame_name_;
-    latest_poseStamped_request.header.frame_id = frame_name_;
+    requested_pose_.header.frame_id = frame_name_;
     // Set base parameters
     auto t = ctg_.get_translation_obj();
     t->set_acceleration(trans_a_);
@@ -62,6 +124,23 @@ public:
 
     config_pose_server.setCallback(boost::bind(&cartesian_trajectory_generator_ros::config_callback, this, _1, _2));
     traj_start_ = ros::Time::now();
+    requested_pose_.header.frame_id = frame_name_;
+
+    visualization_msgs::InteractiveMarker int_marker;
+    server_.reset(new interactive_markers::InteractiveMarkerServer("cartesian_trajectory_generator", "", false));
+    int_marker.header.frame_id = frame_name_;
+    int_marker.scale = 0.5;
+    int_marker.name = "Goal Pose";
+    int_marker.description = "6-DOF Goal Pose";
+    makeBoxControl(int_marker);
+    int_marker.controls[0].interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D;
+    addMarkerControls(int_marker);
+    server_->insert(int_marker);
+    server_->setCallback(int_marker.name,
+                         boost::bind(&cartesian_trajectory_generator_ros::processMarkerFeedback, this, _1));
+    menu_handler_.insert("Send Pose",
+                         boost::bind(&cartesian_trajectory_generator_ros::processMarkerFeedback, this, _1));
+    menu_handler_.apply(*server_, int_marker.name);
   }
 
   bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
@@ -86,9 +165,11 @@ public:
   {
     requested_orientation_.normalize();
     // publishing latest request once
-    tf::pointEigenToMsg(requested_position_, latest_poseStamped_request.pose.position);
-    tf::quaternionEigenToMsg(requested_orientation_, latest_poseStamped_request.pose.orientation);
-    pub_goal_.publish(latest_poseStamped_request);
+    requested_pose_.header.stamp = ros::Time::now();
+    tf::pointEigenToMsg(requested_position_, requested_pose_.pose.position);
+    tf::quaternionEigenToMsg(requested_orientation_, requested_pose_.pose.orientation);
+    pub_goal_.publish(requested_pose_);
+    update_marker_pose();
     // get initial pose
     Eigen::Vector3d startPosition;
     Eigen::Quaterniond startOrientation;
@@ -99,6 +180,13 @@ public:
              startOrientation.coeffs()[1], startOrientation.coeffs()[2], startOrientation.coeffs()[3]);
     ctg_.update_goal(startPosition, startOrientation, requested_position_, requested_orientation_);
     traj_start_ = ros::Time::now();
+  }
+
+  void update_marker_pose()
+  {
+    tf::pointEigenToMsg(requested_position_, requested_pose_.pose.position);
+    tf::quaternionEigenToMsg(requested_orientation_, requested_pose_.pose.orientation);
+    server_->setPose("Goal Pose", requested_pose_.pose);
   }
 
   void goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -167,6 +255,8 @@ public:
       ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
       ros::Duration(1.0).sleep();
     }
+    update_marker_pose();
+
     ROS_INFO_STREAM("Setup complete.");
     double t{ 0. };
     Eigen::Vector3d pos{ requested_position_ };
@@ -181,9 +271,26 @@ public:
         publish_msg(pos, rot);
       }
       publish_tf(pos, rot);
+      server_->applyChanges();
       ros::spinOnce();
       rate_.sleep();
     }
+  }
+
+  void processMarkerFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback)
+  {
+    if (feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT &&
+        feedback->menu_entry_id == 1)
+    {
+      ROS_INFO_STREAM("New marker pose received");
+      geometry_msgs::PoseStamped msg;
+      msg.header.frame_id = frame_name_;
+      msg.pose = feedback->pose;
+      geometry_msgs::PoseStampedConstPtr msg_ptr(new geometry_msgs::PoseStamped(msg));
+      goal_callback(msg_ptr);
+    }
+
+    server_->applyChanges();
   }
 
 private:
@@ -194,13 +301,15 @@ private:
   ros::Publisher pub_pose_;
   ros::Subscriber sub_goal_;
   ros::Publisher pub_goal_;
+  boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
+  interactive_markers::MenuHandler menu_handler_;
 
   Eigen::Vector3d requested_position_;
   Eigen::Quaterniond requested_orientation_;
+  geometry_msgs::PoseStamped requested_pose_;
   ros::Time traj_start_ = ros::Time::now();
 
   geometry_msgs::PoseStamped pose_msg_;
-  geometry_msgs::PoseStamped latest_poseStamped_request;
   std::string frame_name_;
   std::string ee_link_;
 

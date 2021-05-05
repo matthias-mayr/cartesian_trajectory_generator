@@ -8,13 +8,15 @@ add_compile_options(-std=c++14)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
+    dynamic_reconfigure
+    eigen_conversions
     geometry_msgs
+    interactive_markers
+    message_generation
     roscpp
     tf
     tf_conversions
-    eigen_conversions
-    message_generation
-    dynamic_reconfigure
+    visualization_msgs
 )
 
 find_package(Eigen3 REQUIRED)
