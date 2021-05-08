@@ -222,10 +222,13 @@ public:
       requested_position_[0] = config.position_x;
       requested_position_[1] = config.position_y;
       requested_position_[2] = config.position_z;
-      requested_orientation_.coeffs()[0] = config.orientation_x;
-      requested_orientation_.coeffs()[1] = config.orientation_y;
-      requested_orientation_.coeffs()[2] = config.orientation_z;
-      requested_orientation_.coeffs()[3] = config.orientation_w;
+      double roll=config.roll;
+      double pitch=config.pitch;
+      double yaw=config.yaw;
+      requested_orientation_=Eigen::AngleAxisd(roll,Eigen::Vector3d::UnitX())
+    *Eigen::AngleAxisd(pitch,Eigen::Vector3d::UnitY())
+    *Eigen::AngleAxisd(yaw,Eigen::Vector3d::UnitZ());
+
       update_goal();
       ROS_INFO("Request from dynamic reconfig-server recieved");
     }
