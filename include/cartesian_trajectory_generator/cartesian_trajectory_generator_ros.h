@@ -1,7 +1,9 @@
 
 #pragma once
 
+#include <cartesian_trajectory_generator/OverlayMotion.h>
 #include <cartesian_trajectory_generator/cartesian_trajectory_generator_base.h>
+#include <cartesian_trajectory_generator/overlay_functions.h>
 #include <cartesian_trajectory_generator/pose_paramConfig.h>
 #include <dynamic_reconfigure/server.h>
 #include <eigen_conversions/eigen_msg.h>
@@ -84,7 +86,6 @@ public:
     std::string pose_topic;
     std::string new_goal_topic;
     std::string current_goal_topic;
-    double trans_v_max_{ 0 };
     double rot_v_max_{ 0 };
     double trans_a_{ 0 };
     double rot_a_{ 0 };
@@ -108,6 +109,7 @@ public:
     pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
     pub_goal_ = n_.advertise<geometry_msgs::PoseStamped>(current_goal_topic, 1);
     sub_goal_ = n_.subscribe(new_goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
+    srv_overlay_ = n_.advertiseService("overlay_motion", &cartesian_trajectory_generator_ros::overlay_callback, this);
 
     pose_msg_.header.frame_id = frame_name_;
     requested_pose_.header.frame_id = frame_name_;
@@ -231,6 +233,51 @@ public:
     }
   }
 
+  bool overlay_callback(cartesian_trajectory_generator::OverlayMotionRequest &req,
+                        cartesian_trajectory_generator::OverlayMotionResponse &res)
+  {
+    if (overlay_f_)
+    {
+      overlay_fade_ = overlay_f_->get_translation((ros::Time::now() - overlay_start_).toSec());
+    }
+    if (req.motion == "archimedes")
+    {
+      auto o = std::make_shared<cartesian_trajectory_generator::archimedes_spiral>();
+      overlay_f_ = o;
+      o->set_allow_decrease(req.allow_decrease);
+      Eigen::Vector3d vec;
+      tf::vectorMsgToEigen(req.dir, vec);
+      o->set_direction(vec);
+      o->set_max_radius(req.radius);
+      o->set_path_velocity(req.path_velocity);
+      o->set_path_distance(req.path_distance);
+      overlay_start_ = ros::Time::now();
+    }
+    else
+    {
+      overlay_f_.reset();
+    }
+    return true;
+  }
+
+  void overlay_fade(Eigen::Vector3d &pos)
+  {
+    double norm = overlay_fade_.norm();
+    if (norm > 0.0)
+    {
+      double diff = rate_.expectedCycleTime().toSec() * 0.25 * trans_v_max_;
+      if (diff > norm)
+      {
+        overlay_fade_ = Eigen::Vector3d::Zero();
+      }
+      else
+      {
+        overlay_fade_ = overlay_fade_ * (norm - diff) / norm;
+      }
+      pos += overlay_fade_;
+    }
+  }
+
   void publish_msg(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
   {
     pose_msg_.header.stamp = ros::Time::now();
@@ -256,20 +303,27 @@ public:
       ros::Duration(1.0).sleep();
     }
     update_marker_pose();
+    ctg_.update_goal(requested_position_, requested_orientation_, requested_position_, requested_orientation_);
+    traj_start_ = ros::Time::now();
 
     ROS_INFO_STREAM("Setup complete.");
     double t{ 0. };
+    double t_o{ 0. };
     Eigen::Vector3d pos{ requested_position_ };
     Eigen::Quaterniond rot{ requested_orientation_ };
+
     while (n_.ok())
     {
-      if (ros::Time::now() - traj_start_ < ros::Duration(1.1 * ctg_.get_total_time()))
+      t = (ros::Time::now() - traj_start_).toSec();
+      t_o = (ros::Time::now() - overlay_start_).toSec();
+      pos = ctg_.get_position(t);
+      rot = ctg_.get_orientation(t);
+      if (overlay_f_)
       {
-        t = (ros::Time::now() - traj_start_).toSec();
-        pos = ctg_.get_position(t);
-        rot = ctg_.get_orientation(t);
-        publish_msg(pos, rot);
+        pos += overlay_f_->get_translation(t_o);
       }
+      overlay_fade(pos);
+      publish_msg(pos, rot);
       publish_tf(pos, rot);
       server_->applyChanges();
       ros::spinOnce();
@@ -301,6 +355,7 @@ private:
   ros::Publisher pub_pose_;
   ros::Subscriber sub_goal_;
   ros::Publisher pub_goal_;
+  ros::ServiceServer srv_overlay_;
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
   interactive_markers::MenuHandler menu_handler_;
 
@@ -308,10 +363,14 @@ private:
   Eigen::Quaterniond requested_orientation_;
   geometry_msgs::PoseStamped requested_pose_;
   ros::Time traj_start_ = ros::Time::now();
+  std::shared_ptr<cartesian_trajectory_generator::overlay_base> overlay_f_;
+  ros::Time overlay_start_ = ros::Time::now();
+  Eigen::Vector3d overlay_fade_{ Eigen::Vector3d::Zero() };
 
   geometry_msgs::PoseStamped pose_msg_;
   std::string frame_name_;
   std::string ee_link_;
+  double trans_v_max_{ 0 };
 
   ros::Rate rate_ = 1;
 

@@ -28,9 +28,20 @@ find_package(Eigen3 REQUIRED)
 #   Action2.action
 # )
 
+add_service_files(
+  FILES
+  OverlayMotion.srv
+)
+
  generate_dynamic_reconfigure_options(
    cfg/pose_param.cfg
  )
+
+ generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 
 catkin_package(
