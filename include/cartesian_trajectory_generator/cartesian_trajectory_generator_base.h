@@ -74,9 +74,9 @@ public:
     double d_trans = (endPosition - startPosition).norm();
     trans_vec_.normalize();
     // Rotation distance
-    d_rot_ = startOrientation.angularDistance(endOrientation);
-    end_orientation_ = endOrientation;
-    start_orientation_ = startOrientation;
+    start_orientation_ = startOrientation.normalized();
+    end_orientation_ = endOrientation.normalized();
+    d_rot_ = start_orientation_.angularDistance(end_orientation_);
     // Parameterize velocity functions
     trans->set_distance(d_trans);
     rot->set_distance(d_rot_);
