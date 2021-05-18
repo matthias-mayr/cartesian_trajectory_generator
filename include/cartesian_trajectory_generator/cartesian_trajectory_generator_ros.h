@@ -165,6 +165,7 @@ public:
 
   void update_goal()
   {
+    first_goal_ = true;
     requested_orientation_.normalize();
     // publishing latest request once
     requested_pose_.header.stamp = ros::Time::now();
@@ -257,6 +258,11 @@ public:
     {
       overlay_f_.reset();
     }
+    if (!first_goal_)
+    {
+      getInitialPose(requested_position_, requested_orientation_);
+      update_goal();
+    }
     return true;
   }
 
@@ -323,7 +329,10 @@ public:
         pos += overlay_f_->get_translation(t_o);
       }
       overlay_fade(pos);
-      publish_msg(pos, rot);
+      if (first_goal_)
+      {
+        publish_msg(pos, rot);
+      }
       publish_tf(pos, rot);
       server_->applyChanges();
       ros::spinOnce();
@@ -366,6 +375,7 @@ private:
   std::shared_ptr<cartesian_trajectory_generator::overlay_base> overlay_f_;
   ros::Time overlay_start_ = ros::Time::now();
   Eigen::Vector3d overlay_fade_{ Eigen::Vector3d::Zero() };
+  bool first_goal_{ false };
 
   geometry_msgs::PoseStamped pose_msg_;
   std::string frame_name_;
