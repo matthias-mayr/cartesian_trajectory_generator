@@ -48,7 +48,7 @@ catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES cartesian_trajectory_generator
   CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions message_runtime
-  DEPENDS Eigen3
+  DEPENDS EIGEN3
 )
 
 ###########
