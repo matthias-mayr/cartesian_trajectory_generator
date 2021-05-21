@@ -126,7 +126,6 @@ public:
 
     config_pose_server.setCallback(boost::bind(&cartesian_trajectory_generator_ros::config_callback, this, _1, _2));
     traj_start_ = ros::Time::now();
-    requested_pose_.header.frame_id = frame_name_;
 
     visualization_msgs::InteractiveMarker int_marker;
     server_.reset(new interactive_markers::InteractiveMarkerServer("cartesian_trajectory_generator", "", false));
@@ -141,6 +140,8 @@ public:
     server_->setCallback(int_marker.name,
                          boost::bind(&cartesian_trajectory_generator_ros::processMarkerFeedback, this, _1));
     menu_handler_.insert("Send Pose",
+                         boost::bind(&cartesian_trajectory_generator_ros::processMarkerFeedback, this, _1));
+    menu_handler_.insert("Reset Marker Pose",
                          boost::bind(&cartesian_trajectory_generator_ros::processMarkerFeedback, this, _1));
     menu_handler_.apply(*server_, int_marker.name);
   }
@@ -172,7 +173,7 @@ public:
     tf::pointEigenToMsg(requested_position_, requested_pose_.pose.position);
     tf::quaternionEigenToMsg(requested_orientation_, requested_pose_.pose.orientation);
     pub_goal_.publish(requested_pose_);
-    update_marker_pose();
+    update_marker_pose(requested_pose_.pose);
     // get initial pose
     Eigen::Vector3d startPosition;
     Eigen::Quaterniond startOrientation;
@@ -185,11 +186,17 @@ public:
     traj_start_ = ros::Time::now();
   }
 
-  void update_marker_pose()
+  void update_marker_pose(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
   {
-    tf::pointEigenToMsg(requested_position_, requested_pose_.pose.position);
-    tf::quaternionEigenToMsg(requested_orientation_, requested_pose_.pose.orientation);
-    server_->setPose("Goal Pose", requested_pose_.pose);
+    geometry_msgs::Pose pose;
+    tf::pointEigenToMsg(pos, pose.position);
+    tf::quaternionEigenToMsg(rot, pose.orientation);
+    update_marker_pose(pose);
+  }
+
+  void update_marker_pose(const geometry_msgs::Pose &pose)
+  {
+    server_->setPose("Goal Pose", pose);
   }
 
   void goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
@@ -308,7 +315,7 @@ public:
       ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
       ros::Duration(1.0).sleep();
     }
-    update_marker_pose();
+    update_marker_pose(requested_position_, requested_orientation_);
     ctg_.update_goal(requested_position_, requested_orientation_, requested_position_, requested_orientation_);
     traj_start_ = ros::Time::now();
 
@@ -351,6 +358,16 @@ public:
       msg.pose = feedback->pose;
       geometry_msgs::PoseStampedConstPtr msg_ptr(new geometry_msgs::PoseStamped(msg));
       goal_callback(msg_ptr);
+    }
+    else if (feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT &&
+             feedback->menu_entry_id == 2)
+    {
+      Eigen::Vector3d current_position{ Eigen::Vector3d::Zero() };
+      Eigen::Quaterniond current_orientation{ Eigen::Quaterniond::Identity() };
+      if (getInitialPose(current_position, current_orientation))
+      {
+        update_marker_pose(current_position, current_orientation);
+      }
     }
 
     server_->applyChanges();
