@@ -170,6 +170,9 @@ public:
     }
   }
 
+  // Bring base class get_distance in the scope to participate in overloading.
+  using velocity_base::get_distance;
+
   /*! \brief Get the covered distance up to a specified point in time.*/
   double get_distance(double time) override
   {

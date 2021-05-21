@@ -29,9 +29,19 @@ public:
     return start_orientation_.slerp((rot->get_distance(rot_t_ * time) / d_rot_), end_orientation_);
   }
 
+  double get_trans_distance()
+  {
+    return trans->get_distance();
+  }
+
   double get_trans_distance(double time)
   {
     return trans->get_distance(trans_t_ * time);
+  }
+
+  double get_rot_distance()
+  {
+    return rot->get_distance();
   }
 
   double get_rot_distance(double time)
@@ -111,7 +121,7 @@ private:
   Eigen::Vector3d trans_vec_;
   Eigen::Quaterniond start_orientation_;
   Eigen::Quaterniond end_orientation_;
-  double d_rot_;
+  double d_rot_{ 0 };
   double time_{ 0 };
 };
 
