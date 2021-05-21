@@ -227,13 +227,13 @@ public:
       try
       {
         geometry_msgs::PoseStamped t_msg;
-        tf_listener_.transformPose(frame_name_, *msg, t_msg);
+        tf_listener_.transformPose(frame_name_, ros::Time(0), *msg, msg->header.frame_id, t_msg);
         tf::pointMsgToEigen(t_msg.pose.position, requested_position_);
         tf::quaternionMsgToEigen(t_msg.pose.orientation, requested_orientation_);
       }
       catch (tf::TransformException ex)
       {
-        ROS_ERROR("%sDid not update goal.", ex.what());
+        ROS_ERROR("%s Did not update goal.", ex.what());
         return false;
       }
     }
