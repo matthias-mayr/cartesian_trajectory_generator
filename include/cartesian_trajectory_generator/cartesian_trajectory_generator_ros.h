@@ -1,7 +1,9 @@
 
 #pragma once
 
+#include <actionlib/server/simple_action_server.h>
 #include <cartesian_trajectory_generator/OverlayMotion.h>
+#include <cartesian_trajectory_generator/TrajectoryAction.h>
 #include <cartesian_trajectory_generator/cartesian_trajectory_generator_base.h>
 #include <cartesian_trajectory_generator/overlay_functions.h>
 #include <cartesian_trajectory_generator/pose_paramConfig.h>
@@ -14,6 +16,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
+#include <memory>
 
 namespace cartesian_trajectory_generator
 {
@@ -108,7 +111,7 @@ public:
     rate_ = ros::Rate(publish_rate);
     pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
     pub_goal_ = n_.advertise<geometry_msgs::PoseStamped>(current_goal_topic, 1);
-    sub_goal_ = n_.subscribe(new_goal_topic, 1, &cartesian_trajectory_generator_ros::goal_callback, this);
+    sub_goal_ = n_.subscribe(new_goal_topic, 1, &cartesian_trajectory_generator_ros::goal_msg_callback, this);
     srv_overlay_ = n_.advertiseService("overlay_motion", &cartesian_trajectory_generator_ros::overlay_callback, this);
 
     pose_msg_.header.frame_id = frame_name_;
@@ -144,6 +147,14 @@ public:
     menu_handler_.insert("Reset Marker Pose",
                          boost::bind(&cartesian_trajectory_generator_ros::processMarkerFeedback, this, _1));
     menu_handler_.apply(*server_, int_marker.name);
+
+    // Action Server Setup
+    as_ = std::unique_ptr<actionlib::SimpleActionServer<cartesian_trajectory_generator::TrajectoryAction>>(
+        new actionlib::SimpleActionServer<cartesian_trajectory_generator::TrajectoryAction>(
+            n_, std::string("goal_action"), false));
+    as_->registerGoalCallback(boost::bind(&cartesian_trajectory_generator_ros::action_goal_callback, this));
+    as_->registerPreemptCallback(boost::bind(&cartesian_trajectory_generator_ros::action_preempt_callback, this));
+    as_->start();
   }
 
   bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation)
@@ -199,7 +210,12 @@ public:
     server_->setPose("Goal Pose", pose);
   }
 
-  void goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
+  void goal_msg_callback(const geometry_msgs::PoseStampedConstPtr &msg)
+  {
+    goal_callback(msg);
+  }
+
+  bool goal_callback(const geometry_msgs::PoseStampedConstPtr &msg)
   {
     if (msg->header.frame_id == frame_name_)
     {
@@ -218,10 +234,11 @@ public:
       catch (tf::TransformException ex)
       {
         ROS_ERROR("%sDid not update goal.", ex.what());
-        return;
+        return false;
       }
     }
     update_goal();
+    return true;
   }
 
   void config_callback(cartesian_trajectory_generator::pose_paramConfig &config, uint32_t level)
@@ -273,6 +290,56 @@ public:
     return true;
   }
 
+  void action_goal_callback()
+  {
+    boost::shared_ptr<const cartesian_trajectory_generator::TrajectoryGoal> goal;
+    goal = as_->acceptNewGoal();
+    if (!goal_callback(boost::make_shared<const geometry_msgs::PoseStamped>(goal->goal)))
+    {
+      action_result_.error_code = action_result_.TF_FAILED;
+      as_->setAborted(action_result_);
+      return;
+    }
+    ROS_INFO("Accepted new goal");
+  }
+
+  void action_preempt_callback()
+  {
+    ROS_INFO("Actionserver got preempted.");
+    as_->setPreempted();
+  }
+
+  void action_feedback()
+  {
+    if (as_->isActive())
+    {
+      if (ctg_.get_total_time() != 0.0)
+      {
+        action_feedback_.time_percentage = std::min(1.0, trajectory_t_ / ctg_.get_total_time());
+      }
+      else
+      {
+        action_feedback_.time_percentage = 0.0;
+      }
+      double d_trans, d_rot = 1.0;
+      if (ctg_.get_trans_distance() != 0.0)
+      {
+        d_trans = ctg_.get_trans_distance(trajectory_t_) / ctg_.get_trans_distance();
+      }
+      if (ctg_.get_rot_distance() != 0.0)
+      {
+        d_rot = ctg_.get_rot_distance(trajectory_t_) / ctg_.get_rot_distance();
+      }
+      action_feedback_.path_percentage = std::min(d_trans, d_rot);
+      as_->publishFeedback(action_feedback_);
+      if (action_feedback_.time_percentage == 1.0)
+      {
+        action_result_.error_code = action_result_.SUCCESSFUL;
+        as_->setSucceeded(action_result_);
+      }
+    }
+  }
+
   void overlay_fade(Eigen::Vector3d &pos)
   {
     double norm = overlay_fade_.norm();
@@ -320,17 +387,16 @@ public:
     traj_start_ = ros::Time::now();
 
     ROS_INFO_STREAM("Setup complete.");
-    double t{ 0. };
     double t_o{ 0. };
     Eigen::Vector3d pos{ requested_position_ };
     Eigen::Quaterniond rot{ requested_orientation_ };
 
     while (n_.ok())
     {
-      t = (ros::Time::now() - traj_start_).toSec();
+      trajectory_t_ = (ros::Time::now() - traj_start_).toSec();
       t_o = (ros::Time::now() - overlay_start_).toSec();
-      pos = ctg_.get_position(t);
-      rot = ctg_.get_orientation(t);
+      pos = ctg_.get_position(trajectory_t_);
+      rot = ctg_.get_orientation(trajectory_t_);
       if (overlay_f_)
       {
         pos += overlay_f_->get_translation(t_o);
@@ -339,6 +405,7 @@ public:
       if (first_goal_)
       {
         publish_msg(pos, rot);
+        action_feedback();
       }
       publish_tf(pos, rot);
       server_->applyChanges();
@@ -382,6 +449,7 @@ private:
   ros::Subscriber sub_goal_;
   ros::Publisher pub_goal_;
   ros::ServiceServer srv_overlay_;
+  std::unique_ptr<actionlib::SimpleActionServer<cartesian_trajectory_generator::TrajectoryAction>> as_;
   boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
   interactive_markers::MenuHandler menu_handler_;
 
@@ -395,9 +463,12 @@ private:
   bool first_goal_{ false };
 
   geometry_msgs::PoseStamped pose_msg_;
+  cartesian_trajectory_generator::TrajectoryFeedback action_feedback_;
+  cartesian_trajectory_generator::TrajectoryResult action_result_;
   std::string frame_name_;
   std::string ee_link_;
   double trans_v_max_{ 0 };
+  double trajectory_t_{ 0. };
 
   ros::Rate rate_ = 1;
 

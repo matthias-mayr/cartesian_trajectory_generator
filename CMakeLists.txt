@@ -8,6 +8,7 @@ add_compile_options(-std=c++14)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED
+    actionlib_msgs
     dynamic_reconfigure
     eigen_conversions
     geometry_msgs
@@ -22,32 +23,32 @@ find_package(catkin REQUIRED
 find_package(Eigen3 REQUIRED)
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+add_action_files(
+  FILES
+  Trajectory.action
+)
 
 add_service_files(
   FILES
   OverlayMotion.srv
 )
 
- generate_dynamic_reconfigure_options(
-   cfg/pose_param.cfg
- )
+generate_dynamic_reconfigure_options(
+  cfg/pose_param.cfg
+)
 
- generate_messages(
+generate_messages(
   DEPENDENCIES
-  std_msgs
+  actionlib_msgs
   geometry_msgs
+  std_msgs
 )
 
 
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES cartesian_trajectory_generator
-  CATKIN_DEPENDS roscpp geometry_msgs tf tf_conversions eigen_conversions message_runtime
+  CATKIN_DEPENDS actionlib_msgs dynamic_reconfigure eigen_conversions geometry_msgs interactive_markers message_runtime roscpp tf tf_conversions visualization_msgs
   DEPENDS EIGEN3
 )
 

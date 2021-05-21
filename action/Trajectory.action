@@ -1,0 +1,15 @@
+# goal
+geometry_msgs/PoseStamped goal
+---
+# result
+int32 error_code
+int32 SUCCESSFUL = 0
+int32 INVALID_GOAL = -1 # e.g. illegal quaternions in poses
+int32 TF_FAILED = -2
+
+string error_string
+---
+# feedback
+# Between 0 and 1
+float32 path_percentage
+float32 time_percentage
