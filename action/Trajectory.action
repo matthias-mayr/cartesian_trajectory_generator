@@ -1,5 +1,6 @@
 # goal
-geometry_msgs/PoseStamped goal
+Header header
+geometry_msgs/PoseStamped pose
 ---
 # result
 int32 error_code

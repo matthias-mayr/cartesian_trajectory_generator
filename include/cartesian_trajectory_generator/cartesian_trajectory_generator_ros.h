@@ -294,7 +294,7 @@ public:
   {
     boost::shared_ptr<const cartesian_trajectory_generator::TrajectoryGoal> goal;
     goal = as_->acceptNewGoal();
-    if (!goal_callback(boost::make_shared<const geometry_msgs::PoseStamped>(goal->goal)))
+    if (!goal_callback(boost::make_shared<const geometry_msgs::PoseStamped>(goal->pose)))
     {
       action_result_.error_code = action_result_.TF_FAILED;
       as_->setAborted(action_result_);
