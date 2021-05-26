@@ -74,7 +74,7 @@ public:
     return time_;
   }
 
-  bool update_goal(const Eigen::Vector3d& startPosition, const Eigen::Quaterniond& startOrientation,
+  bool updateGoal(const Eigen::Vector3d& startPosition, const Eigen::Quaterniond& startOrientation,
                    const Eigen::Vector3d& endPosition, const Eigen::Quaterniond& endOrientation)
   {
     trans_t_ = rot_t_ = 1.0;
