@@ -64,7 +64,7 @@ include_directories(
   ${Eigen_INCLUDE_DIRS}
 )
 
-add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros.cpp)
+add_executable(${PROJECT_NAME} src/cartesian_trajectory_generator_ros_node.cpp src/cartesian_trajectory_generator_ros.cpp)
 
 add_dependencies(
   ${PROJECT_NAME} 
