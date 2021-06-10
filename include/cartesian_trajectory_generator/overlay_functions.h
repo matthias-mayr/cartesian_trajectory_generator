@@ -31,6 +31,16 @@ public:
   /*! \brief */
   virtual Eigen::Quaterniond get_rotation(double time) = 0;
 
+  Eigen::Vector3d get_translation_rotated(double time, const Eigen::Quaterniond& rot)
+  {
+    return rot * get_translation(time);
+  }
+
+  Eigen::Quaterniond get_rotation_rotated(double time, const Eigen::Quaterniond& rot)
+  {
+    return rot * get_rotation(time);
+  }
+
 protected:
   double time_{ 0 }; /*!< Last time. */
 };

@@ -1,4 +1,9 @@
-string motion
+Header header
+
+int8 motion
+int8 NONE = 0
+int8 ARCHIMEDES = 1
+
 float64 radius
 float64 path_distance
 float64 path_velocity
