@@ -61,3 +61,29 @@ This package publishes an interactive marker. You can move it to your desired go
 
 The marker position is updated when new goals arrive via messages or dynamic reconfigure.
 ![image info](./res/interactive_marker.png)
+
+## Apply an Overlay Motion
+
+The trajectory generator announces a service at `/cartesian_trajectory_generator/overlay_motion`.
+
+An example call can look like this:
+
+```
+rosservice call /cartesian_trajectory_generator/overlay_motion "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: 'world'
+motion: 1
+radius: 0.2
+path_distance: 0.01
+path_velocity: 0.1
+allow_decrease: false
+dir: {x: 0.0, y: 0.0, z: 1.0}"
+```
+
+The static values for the motion are defined in the [service message definition](srv/OverlayMotion.srv).
+
+### Cancelling an Overlay Motion
+
+A call with `motion = 0`, that corresponds to `NONE` in the service message definition, or an invalid value will cancel the current motion.\
+The reference pose will smoothly transition back to the last goal.
