@@ -103,6 +103,7 @@ public:
       }
     }
     time_ = std::max(trans->get_time(), rot->get_time());
+    return true;
   }
 
   void set_synchronized(bool sync)
