@@ -28,6 +28,11 @@ add_action_files(
   Trajectory.action
 )
 
+add_message_files(
+  FILES
+  OverlayMotionConf.msg
+)
+
 add_service_files(
   FILES
   OverlayMotion.srv
