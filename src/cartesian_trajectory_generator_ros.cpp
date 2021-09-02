@@ -87,6 +87,7 @@ cartesianTrajectoryGeneratorRos::cartesianTrajectoryGeneratorRos()
   n_.param<double>("trans_d", trans_d_, trans_a_);
   n_.param<double>("rot_d", rot_d_, trans_a_);
   n_.param<bool>("sync", synced, false);
+  n_.param<bool>("publish_constantly", publish_constantly_, false);
 
   rate_ = ros::Rate(publish_rate);
   pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
@@ -281,11 +282,16 @@ bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_gener
   return true;
 }
 
-void cartesianTrajectoryGeneratorRos::overlayFadeOut(Eigen::Vector3d &pos)
-{
+bool cartesianTrajectoryGeneratorRos::overlayFadeOut() {
   double norm = overlay_fade_.norm();
-  if (norm > 0.0)
+  return norm > 0.0;
+}
+
+void cartesianTrajectoryGeneratorRos::applyOverlayFadeOut(Eigen::Vector3d &pos)
+{
+  if (overlayFadeOut())
   {
+    double norm = overlay_fade_.norm();
     double diff = rate_.expectedCycleTime().toSec() * 0.25 * trans_v_max_;
     if (diff > norm)
     {
@@ -362,18 +368,20 @@ void cartesianTrajectoryGeneratorRos::run()
   while (n_.ok())
   {
     trajectory_t_ = (ros::Time::now() - traj_start_).toSec();
-    t_o = (ros::Time::now() - overlay_start_).toSec();
-    pos = ctg_.get_position(trajectory_t_);
-    rot = ctg_.get_orientation(trajectory_t_);
-    if (overlay_f_)
-    {
-      pos += overlay_f_->get_translation(t_o);
-    }
-    overlayFadeOut(pos);
-    if (first_goal_)
-    {
-      publishRefMsg(pos, rot);
-      actionFeedback();
+    if (publish_constantly_ || trajectory_t_ < ctg_.get_total_time() || overlay_f_ || overlayFadeOut()) {
+      t_o = (ros::Time::now() - overlay_start_).toSec();
+      pos = ctg_.get_position(trajectory_t_);
+      rot = ctg_.get_orientation(trajectory_t_);
+      if (overlay_f_)
+      {
+        pos += overlay_f_->get_translation(t_o);
+      }
+      applyOverlayFadeOut(pos);
+      if (first_goal_)
+      {
+        publishRefMsg(pos, rot);
+        actionFeedback();
+      }
     }
     publishRefTf(pos, rot);
     server_->applyChanges();

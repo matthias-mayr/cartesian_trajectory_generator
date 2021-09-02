@@ -45,7 +45,9 @@ public:
   bool overlayCallback(cartesian_trajectory_generator::OverlayMotionRequest &req,
                        cartesian_trajectory_generator::OverlayMotionResponse &res);
 
-  void overlayFadeOut(Eigen::Vector3d &pos);
+  bool overlayFadeOut();
+
+  void applyOverlayFadeOut(Eigen::Vector3d &pos);
 
   void processMarkerFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
 
@@ -85,6 +87,7 @@ private:
   ros::Time overlay_start_ = ros::Time::now();
   Eigen::Vector3d overlay_fade_{ Eigen::Vector3d::Zero() };
   bool first_goal_{ false };
+  bool publish_constantly_ { false };
 
   geometry_msgs::PoseStamped pose_msg_;
   cartesian_trajectory_generator::TrajectoryFeedback action_feedback_;
