@@ -401,16 +401,19 @@ void cartesianTrajectoryGeneratorRos::run()
   while (n_.ok())
   {
     trajectory_t_ = (ros::Time::now() - traj_start_).toSec();
-    t_o = (ros::Time::now() - overlay_start_).toSec();
-    pos = ctg_.get_position(trajectory_t_);
-    rot = ctg_.get_orientation(trajectory_t_);
-
-    applyOverlay(pos, t_o);
-    applyOverlayFadeOut(pos);
-    if (first_goal_)
+    if (publish_constantly_ || trajectory_t_ < ctg_.get_total_time() || overlay_f_ || overlayFadeOut())
     {
-      publishRefMsg(pos, rot);
-      actionFeedback();
+      t_o = (ros::Time::now() - overlay_start_).toSec();
+      pos = ctg_.get_position(trajectory_t_);
+      rot = ctg_.get_orientation(trajectory_t_);
+
+      applyOverlay(pos, t_o);
+      applyOverlayFadeOut(pos);
+      if (first_goal_)
+      {
+        publishRefMsg(pos, rot);
+        actionFeedback();
+      }
     }
     publishRefTf(pos, rot);
     server_->applyChanges();
