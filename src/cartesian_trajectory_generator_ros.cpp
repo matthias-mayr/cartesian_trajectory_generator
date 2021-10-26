@@ -121,8 +121,7 @@ cartesianTrajectoryGeneratorRos::cartesianTrajectoryGeneratorRos()
   int_marker.controls[0].interaction_mode = visualization_msgs::InteractiveMarkerControl::MOVE_ROTATE_3D;
   addMarkerControls(int_marker);
   server_->insert(int_marker);
-  server_->setCallback(int_marker.name,
-                       boost::bind(&cartesianTrajectoryGeneratorRos::processMarkerFeedback, this, _1));
+  server_->setCallback(int_marker.name, boost::bind(&cartesianTrajectoryGeneratorRos::processMarkerFeedback, this, _1));
   menu_handler_.insert("Send Pose", boost::bind(&cartesianTrajectoryGeneratorRos::processMarkerFeedback, this, _1));
   menu_handler_.insert("Reset Marker Pose",
                        boost::bind(&cartesianTrajectoryGeneratorRos::processMarkerFeedback, this, _1));
@@ -188,7 +187,7 @@ void cartesianTrajectoryGeneratorRos::actionPreemptCallback()
 }
 
 void cartesianTrajectoryGeneratorRos::markerConfigCallback(cartesian_trajectory_generator::pose_paramConfig &config,
-                                                         uint32_t level)
+                                                           uint32_t level)
 {
   if (config.ready_to_send)
   {
@@ -205,8 +204,33 @@ void cartesianTrajectoryGeneratorRos::markerConfigCallback(cartesian_trajectory_
   }
 }
 
+void cartesianTrajectoryGeneratorRos::applyOverlay(Eigen::Vector3d &pos, double t_o)
+{
+  if (!overlay_f_)
+  {
+    return;
+  }
+
+  Eigen::Quaterniond rot = Eigen::Quaterniond::Identity();
+  if (overlay_frame_id_ != frame_name_)
+  {
+    try
+    {
+      tf::StampedTransform transform;
+      tf_listener_.lookupTransform(frame_name_, overlay_frame_id_, ros::Time(0), transform);
+      tf::quaternionTFToEigen(transform.getRotation(), rot);
+    }
+    catch (tf::TransformException ex)
+    {
+      ROS_ERROR_THROTTLE(1, "%s", ex.what());
+      return;
+    }
+  }
+  pos += overlay_f_->get_translation_rotated(t_o, rot);
+}
+
 bool cartesianTrajectoryGeneratorRos::getInitialPose(Eigen::Vector3d &startPosition,
-                                                        Eigen::Quaterniond &startOrientation)
+                                                     Eigen::Quaterniond &startOrientation)
 {
   tf::StampedTransform transform;
   try
@@ -251,13 +275,13 @@ bool cartesianTrajectoryGeneratorRos::goalCallback(const geometry_msgs::PoseStam
 }
 
 bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_generator::OverlayMotionRequest &req,
-                                                          cartesian_trajectory_generator::OverlayMotionResponse &res)
+                                                      cartesian_trajectory_generator::OverlayMotionResponse &res)
 {
   if (overlay_f_)
   {
     overlay_fade_ = overlay_f_->get_translation((ros::Time::now() - overlay_start_).toSec());
   }
-  if (req.motion == "archimedes")
+  if (req.motion == cartesian_trajectory_generator::OverlayMotionRequest::ARCHIMEDES)
   {
     auto o = std::make_shared<cartesian_trajectory_generator::archimedes_spiral>();
     overlay_f_ = o;
@@ -269,6 +293,14 @@ bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_gener
     o->set_path_velocity(req.path_velocity);
     o->set_path_distance(req.path_distance);
     overlay_start_ = ros::Time::now();
+    if (!req.header.frame_id.empty())
+    {
+      overlay_frame_id_ = req.header.frame_id;
+    }
+    else
+    {
+      overlay_frame_id_ = ee_link_;
+    }
   }
   else
   {
@@ -282,7 +314,8 @@ bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_gener
   return true;
 }
 
-bool cartesianTrajectoryGeneratorRos::overlayFadeOut() {
+bool cartesianTrajectoryGeneratorRos::overlayFadeOut()
+{
   double norm = overlay_fade_.norm();
   return norm > 0.0;
 }
@@ -368,20 +401,16 @@ void cartesianTrajectoryGeneratorRos::run()
   while (n_.ok())
   {
     trajectory_t_ = (ros::Time::now() - traj_start_).toSec();
-    if (publish_constantly_ || trajectory_t_ < ctg_.get_total_time() || overlay_f_ || overlayFadeOut()) {
-      t_o = (ros::Time::now() - overlay_start_).toSec();
-      pos = ctg_.get_position(trajectory_t_);
-      rot = ctg_.get_orientation(trajectory_t_);
-      if (overlay_f_)
-      {
-        pos += overlay_f_->get_translation(t_o);
-      }
-      applyOverlayFadeOut(pos);
-      if (first_goal_)
-      {
-        publishRefMsg(pos, rot);
-        actionFeedback();
-      }
+    t_o = (ros::Time::now() - overlay_start_).toSec();
+    pos = ctg_.get_position(trajectory_t_);
+    rot = ctg_.get_orientation(trajectory_t_);
+
+    applyOverlay(pos, t_o);
+    applyOverlayFadeOut(pos);
+    if (first_goal_)
+    {
+      publishRefMsg(pos, rot);
+      actionFeedback();
     }
     publishRefTf(pos, rot);
     server_->applyChanges();

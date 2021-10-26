@@ -31,6 +31,8 @@ public:
 
   void actionPreemptCallback();
 
+  void applyOverlay(Eigen::Vector3d& pos, double t_o);
+
   void markerConfigCallback(cartesian_trajectory_generator::pose_paramConfig &config, uint32_t level);
 
   bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation);
@@ -86,6 +88,7 @@ private:
   std::shared_ptr<cartesian_trajectory_generator::overlay_base> overlay_f_;
   ros::Time overlay_start_ = ros::Time::now();
   Eigen::Vector3d overlay_fade_{ Eigen::Vector3d::Zero() };
+  std::string overlay_frame_id_;
   bool first_goal_{ false };
   bool publish_constantly_ { false };
 
