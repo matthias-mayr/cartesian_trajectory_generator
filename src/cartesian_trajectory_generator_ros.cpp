@@ -161,6 +161,7 @@ void cartesianTrajectoryGeneratorRos::actionFeedback()
     as_->publishFeedback(action_feedback_);
     if (action_feedback_.time_percentage == 1.0)
     {
+      ROS_INFO("Set goal succeeded.");
       action_result_.error_code = action_result_.SUCCESSFUL;
       as_->setSucceeded(action_result_);
     }
@@ -177,7 +178,7 @@ void cartesianTrajectoryGeneratorRos::actionGoalCallback()
     as_->setAborted(action_result_);
     return;
   }
-  ROS_INFO("Accepted new goal");
+  ROS_INFO("Accepted new goal.");
 }
 
 void cartesianTrajectoryGeneratorRos::actionPreemptCallback()
@@ -412,9 +413,9 @@ void cartesianTrajectoryGeneratorRos::run()
       if (first_goal_)
       {
         publishRefMsg(pos, rot);
-        actionFeedback();
       }
     }
+    actionFeedback();
     publishRefTf(pos, rot);
     server_->applyChanges();
     ros::spinOnce();
