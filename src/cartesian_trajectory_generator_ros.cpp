@@ -81,7 +81,7 @@ cartesianTrajectoryGeneratorRos::cartesianTrajectoryGeneratorRos()
         n_.getParam("trans_v_max", trans_v_max_) && n_.getParam("rot_v_max", rot_v_max_) &&
         n_.getParam("trans_a", trans_a_) && n_.getParam("rot_a", rot_a_)))
   {
-    ROS_ERROR("Failed to load required parameters. Are they load to the parameter server?");
+    ROS_ERROR_STREAM("Failed to load required parameters. Are they load to the parameter server in namespace '" << n_.getNamespace() << "'?");
     ros::shutdown();
   }
   n_.param<double>("trans_d", trans_d_, trans_a_);
