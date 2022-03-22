@@ -1,0 +1,5 @@
+trigger-main:
+  trigger: 
+    project: robotlab/heron/heron-ci
+    branch: main
+    strategy: depend
