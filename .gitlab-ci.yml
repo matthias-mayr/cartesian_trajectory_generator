@@ -1,5 +1,5 @@
 trigger-main:
   trigger: 
-    project: robotlab/heron/heron-ci
-    branch: main
+    project: robotlab/heron/heron_workspace_setup
+    branch: master
     strategy: depend
