@@ -170,9 +170,16 @@ void cartesianTrajectoryGeneratorRos::actionFeedback()
 
 void cartesianTrajectoryGeneratorRos::actionGoalCallback()
 {
-  boost::shared_ptr<const cartesian_trajectory_generator::TrajectoryGoal> goal;
-  goal = as_->acceptNewGoal();
-  if (!goalCallback(boost::make_shared<const geometry_msgs::PoseStamped>(goal->pose)))
+  boost::shared_ptr<const cartesian_trajectory_generator::TrajectoryGoal> action;
+  action = as_->acceptNewGoal();
+  bool get_initial_pose = true;
+  if (action->start.pose.position != geometry_msgs::Point() && action->start.pose.orientation != geometry_msgs::Quaternion())
+  {
+    get_initial_pose = false;
+    tf::pointMsgToEigen(action->start.pose.position, this->start_position_);
+    tf::quaternionMsgToEigen(action->start.pose.orientation, this->start_orientation_);
+  }
+  if (!goalCallback(boost::make_shared<const geometry_msgs::PoseStamped>(action->goal), get_initial_pose))
   {
     action_result_.error_code = action_result_.TF_FAILED;
     as_->setAborted(action_result_);
@@ -249,7 +256,7 @@ bool cartesianTrajectoryGeneratorRos::getInitialPose(Eigen::Vector3d &startPosit
   return true;
 }
 
-bool cartesianTrajectoryGeneratorRos::goalCallback(const geometry_msgs::PoseStampedConstPtr &msg)
+bool cartesianTrajectoryGeneratorRos::goalCallback(const geometry_msgs::PoseStampedConstPtr &msg, bool get_initial_pose)
 {
   if (msg->header.frame_id == frame_name_)
   {
@@ -271,7 +278,7 @@ bool cartesianTrajectoryGeneratorRos::goalCallback(const geometry_msgs::PoseStam
       return false;
     }
   }
-  updateGoal();
+  updateGoal(get_initial_pose);
   return true;
 }
 
@@ -423,8 +430,16 @@ void cartesianTrajectoryGeneratorRos::run()
   }
 }
 
-void cartesianTrajectoryGeneratorRos::updateGoal()
+bool cartesianTrajectoryGeneratorRos::updateGoal(bool get_start_pose)
 {
+  if (get_start_pose)
+  {
+    if (!getInitialPose(start_position_, start_orientation_))
+    {
+      ROS_ERROR("Could not look up transform. Not setting new goal.");
+      return false;
+    }
+  }
   first_goal_ = true;
   requested_orientation_.normalize();
   // publishing latest request once
@@ -433,16 +448,13 @@ void cartesianTrajectoryGeneratorRos::updateGoal()
   tf::quaternionEigenToMsg(requested_orientation_, requested_pose_.pose.orientation);
   pub_goal_.publish(requested_pose_);
   updateMarkerPose(requested_pose_.pose);
-  // get initial pose
-  Eigen::Vector3d startPosition;
-  Eigen::Quaterniond startOrientation;
-  getInitialPose(startPosition, startOrientation);
 
-  ROS_INFO("Starting position:(x=%2lf,y=%2lf,z=%2lf) \t orientation:(x=%3lf,y=%3lf,z=%3lf, w=%3lf) ", startPosition[0],
-           startPosition[1], startPosition[2], startOrientation.coeffs()[0], startOrientation.coeffs()[1],
-           startOrientation.coeffs()[2], startOrientation.coeffs()[3]);
-  ctg_.updateGoal(startPosition, startOrientation, requested_position_, requested_orientation_);
+  ROS_INFO("Starting position:(x: %2lf,y: %2lf,z: %2lf) \t Orientation:(x: %3lf,y: %3lf,z: %3lf, w: %3lf)", start_position_[0],
+           start_position_[1], start_position_[2], start_orientation_.coeffs()[0], start_orientation_.coeffs()[1],
+           start_orientation_.coeffs()[2], start_orientation_.coeffs()[3]);
+  ctg_.updateGoal(start_position_, start_orientation_, requested_position_, requested_orientation_);
   traj_start_ = ros::Time::now();
+  return true;
 }
 
 void cartesianTrajectoryGeneratorRos::updateMarkerPose(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
