@@ -173,7 +173,7 @@ void cartesianTrajectoryGeneratorRos::actionGoalCallback()
   boost::shared_ptr<const cartesian_trajectory_generator::TrajectoryGoal> action;
   action = as_->acceptNewGoal();
   bool get_initial_pose = true;
-  if (action->start.pose.position != geometry_msgs::Point() && action->start.pose.orientation != geometry_msgs::Quaternion())
+  if (action->start.pose != geometry_msgs::Pose())
   {
     get_initial_pose = false;
     tf::pointMsgToEigen(action->start.pose.position, this->start_position_);
