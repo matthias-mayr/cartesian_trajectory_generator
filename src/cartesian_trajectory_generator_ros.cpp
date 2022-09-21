@@ -368,11 +368,15 @@ void cartesianTrajectoryGeneratorRos::processMarkerFeedback(
 
 void cartesianTrajectoryGeneratorRos::publishRefTf(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)
 {
-  tf::vectorEigenToTF(pos, tf_pos_);
-  tf_br_transform_.setOrigin(tf_pos_);
-  tf::quaternionEigenToTF(rot, tf_rot_);
-  tf_br_transform_.setRotation(tf_rot_);
-  tf_br_.sendTransform(tf::StampedTransform(tf_br_transform_, ros::Time::now(), frame_name_, ee_link_ + "_ref_pose"));
+  if (ros::Time::now() > this->tf_last_time_)
+  {
+    tf::vectorEigenToTF(pos, tf_pos_);
+    tf_br_transform_.setOrigin(tf_pos_);
+    tf::quaternionEigenToTF(rot, tf_rot_);
+    tf_br_transform_.setRotation(tf_rot_);
+    tf_br_.sendTransform(tf::StampedTransform(tf_br_transform_, ros::Time::now(), frame_name_, ee_link_ + "_ref_pose"));
+    this->tf_last_time_ = ros::Time::now();
+  }
 }
 
 void cartesianTrajectoryGeneratorRos::publishRefMsg(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot)

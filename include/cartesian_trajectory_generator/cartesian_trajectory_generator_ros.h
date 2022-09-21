@@ -105,6 +105,7 @@ private:
   tf::TransformListener tf_listener_;
   tf::TransformBroadcaster tf_br_;
   tf::Transform tf_br_transform_;
+  ros::Time tf_last_time_ = ros::Time::now();
   tf::Vector3 tf_pos_;
   tf::Quaternion tf_rot_;
 
