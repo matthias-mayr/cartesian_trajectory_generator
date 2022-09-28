@@ -97,7 +97,6 @@ cartesianTrajectoryGeneratorRos::cartesianTrajectoryGeneratorRos()
 
   pose_msg_.header.frame_id = frame_name_;
   requested_pose_.header.frame_id = frame_name_;
-  start_pose_.header.frame_id = frame_name_;
   // Set base parameters
   auto t = ctg_.get_translation_obj();
   t->set_acceleration(trans_a_);
@@ -177,17 +176,18 @@ void cartesianTrajectoryGeneratorRos::actionGoalCallback()
   if (action->start.pose != geometry_msgs::Pose())
   {
     get_initial_pose = false;
+    geometry_msgs::PoseStamped start_pose = action->start;
     try
     {
-      tf_listener_.transformPose(frame_name_, action->start, start_pose_);
+      tf_listener_.transformPose(this->frame_name_, action->start, start_pose);
     }
     catch(tf::TransformException ex)
     {
-      ROS_ERROR(ex.what());
+      ROS_ERROR("%s", ex.what());
     }
 
-    tf::pointMsgToEigen(start_pose_.pose.position, this->start_position_);
-    tf::quaternionMsgToEigen(start_pose_.pose.orientation, this->start_orientation_);
+    tf::pointMsgToEigen(start_pose.pose.position, this->start_position_);
+    tf::quaternionMsgToEigen(start_pose.pose.orientation, this->start_orientation_);
   }
   if (!goalCallback(boost::make_shared<const geometry_msgs::PoseStamped>(action->goal), get_initial_pose))
   {
@@ -454,7 +454,6 @@ bool cartesianTrajectoryGeneratorRos::updateGoal(bool get_start_pose)
   requested_orientation_.normalize();
   // publishing latest request once
   requested_pose_.header.stamp = ros::Time::now();
-  start_pose_.header.stamp = ros::Time::now();
   
   tf::pointEigenToMsg(requested_position_, requested_pose_.pose.position);
   tf::quaternionEigenToMsg(requested_orientation_, requested_pose_.pose.orientation);
