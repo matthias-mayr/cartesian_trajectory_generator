@@ -1,6 +1,8 @@
-# goal
+# Goal
 Header header
-geometry_msgs/PoseStamped pose
+# Start pose is optional. Empty pose uses current TF transformation 
+geometry_msgs/PoseStamped start
+geometry_msgs/PoseStamped goal
 ---
 # result
 int32 error_code

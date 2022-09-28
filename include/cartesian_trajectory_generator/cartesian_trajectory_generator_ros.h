@@ -37,7 +37,7 @@ public:
 
   bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation);
 
-  bool goalCallback(const geometry_msgs::PoseStampedConstPtr &msg);
+  bool goalCallback(const geometry_msgs::PoseStampedConstPtr &msg, bool get_initial_pose = true);
 
   void goalMsgCallback(const geometry_msgs::PoseStampedConstPtr &msg)
   {
@@ -59,7 +59,7 @@ public:
 
   void run();
 
-  void updateGoal();
+  bool updateGoal(bool get_start_pose = true);
 
   void updateMarkerPose(const Eigen::Vector3d &pos, const Eigen::Quaterniond &rot);
 
@@ -84,6 +84,8 @@ private:
   Eigen::Vector3d requested_position_;
   Eigen::Quaterniond requested_orientation_;
   geometry_msgs::PoseStamped requested_pose_;
+  Eigen::Vector3d start_position_;
+  Eigen::Quaterniond start_orientation_;
   ros::Time traj_start_ = ros::Time::now();
   std::shared_ptr<cartesian_trajectory_generator::overlay_base> overlay_f_;
   ros::Time overlay_start_ = ros::Time::now();
