@@ -35,7 +35,7 @@ public:
 
   void markerConfigCallback(cartesian_trajectory_generator::pose_paramConfig &config, uint32_t level);
 
-  bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation);
+  bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation, bool print_exception = true);
 
   bool goalCallback(const geometry_msgs::PoseStampedConstPtr &msg, bool get_initial_pose = true);
 

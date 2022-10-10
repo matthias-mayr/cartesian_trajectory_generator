@@ -248,7 +248,7 @@ void cartesianTrajectoryGeneratorRos::applyOverlay(Eigen::Vector3d &pos, double 
 }
 
 bool cartesianTrajectoryGeneratorRos::getInitialPose(Eigen::Vector3d &startPosition,
-                                                     Eigen::Quaterniond &startOrientation)
+                                                     Eigen::Quaterniond &startOrientation, bool print_exception)
 {
   tf::StampedTransform transform;
   try
@@ -258,7 +258,10 @@ bool cartesianTrajectoryGeneratorRos::getInitialPose(Eigen::Vector3d &startPosit
   }
   catch (tf::TransformException &ex)
   {
-    ROS_ERROR("%s", ex.what());
+    if (print_exception)
+    {
+      ROS_ERROR("%s", ex.what());
+    }
     return false;
   }
   tf::vectorTFToEigen(transform.getOrigin(), startPosition);
@@ -406,7 +409,7 @@ void cartesianTrajectoryGeneratorRos::publishRefMsg(const Eigen::Vector3d &pos, 
 
 void cartesianTrajectoryGeneratorRos::run()
 {
-  while (!getInitialPose(requested_position_, requested_orientation_))
+  while (!getInitialPose(requested_position_, requested_orientation_, false))
   {
     ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
     ros::Duration(1.0).sleep();
