@@ -35,7 +35,7 @@ public:
 
   void markerConfigCallback(cartesian_trajectory_generator::pose_paramConfig &config, uint32_t level);
 
-  bool getInitialPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation, bool print_exception = true);
+  bool getCurrentPose(Eigen::Vector3d &startPosition, Eigen::Quaterniond &startOrientation, bool print_exception = true);
 
   bool goalCallback(const geometry_msgs::PoseStampedConstPtr &msg, bool get_initial_pose = true);
 
@@ -69,10 +69,12 @@ public:
   }
 
 private:
-  ros::NodeHandle n_;
   cartesian_trajectory_generator_base<cartesian_trajectory_generator::constant_acceleration,
                                       cartesian_trajectory_generator::constant_acceleration>
       ctg_;
+
+  // ROS Communication
+  ros::NodeHandle n_;
   ros::Publisher pub_pose_;
   ros::Subscriber sub_goal_;
   ros::Publisher pub_goal_;
@@ -104,6 +106,7 @@ private:
 
   ros::Rate rate_ = 1;
 
+  // tf frame
   tf::TransformListener tf_listener_;
   tf::TransformBroadcaster tf_br_;
   tf::Transform tf_br_transform_;
@@ -111,6 +114,7 @@ private:
   tf::Vector3 tf_pos_;
   tf::Quaternion tf_rot_;
 
+  // Dynamic reconfigure
   dynamic_reconfigure::Server<cartesian_trajectory_generator::pose_paramConfig> config_pose_server;
 };
 

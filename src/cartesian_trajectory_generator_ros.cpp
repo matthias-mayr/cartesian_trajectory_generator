@@ -247,7 +247,7 @@ void cartesianTrajectoryGeneratorRos::applyOverlay(Eigen::Vector3d &pos, double 
   pos += overlay_f_->get_translation_rotated(t_o, rot);
 }
 
-bool cartesianTrajectoryGeneratorRos::getInitialPose(Eigen::Vector3d &startPosition,
+bool cartesianTrajectoryGeneratorRos::getCurrentPose(Eigen::Vector3d &startPosition,
                                                      Eigen::Quaterniond &startOrientation, bool print_exception)
 {
   tf::StampedTransform transform;
@@ -329,7 +329,7 @@ bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_gener
   }
   if (!first_goal_)
   {
-    getInitialPose(requested_position_, requested_orientation_);
+    getCurrentPose(requested_position_, requested_orientation_);
     updateGoal();
   }
   return true;
@@ -377,7 +377,7 @@ void cartesianTrajectoryGeneratorRos::processMarkerFeedback(
   {
     Eigen::Vector3d current_position{ Eigen::Vector3d::Zero() };
     Eigen::Quaterniond current_orientation{ Eigen::Quaterniond::Identity() };
-    if (getInitialPose(current_position, current_orientation))
+    if (getCurrentPose(current_position, current_orientation))
     {
       updateMarkerPose(current_position, current_orientation);
     }
@@ -409,7 +409,7 @@ void cartesianTrajectoryGeneratorRos::publishRefMsg(const Eigen::Vector3d &pos, 
 
 void cartesianTrajectoryGeneratorRos::run()
 {
-  while (!getInitialPose(requested_position_, requested_orientation_, false))
+  while (!getCurrentPose(requested_position_, requested_orientation_, false))
   {
     ROS_INFO_STREAM("Waiting for inital transform from " << frame_name_ << " to " << ee_link_);
     ros::Duration(1.0).sleep();
@@ -451,7 +451,7 @@ bool cartesianTrajectoryGeneratorRos::updateGoal(bool get_start_pose)
 {
   if (get_start_pose)
   {
-    if (!getInitialPose(start_position_, start_orientation_))
+    if (!getCurrentPose(start_position_, start_orientation_))
     {
       ROS_ERROR("Could not look up transform. Not setting new goal.");
       return false;
