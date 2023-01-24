@@ -88,6 +88,8 @@ cartesianTrajectoryGeneratorRos::cartesianTrajectoryGeneratorRos()
   n_.param<double>("rot_d", rot_d_, trans_a_);
   n_.param<bool>("sync", synced, false);
   n_.param<bool>("publish_constantly", publish_constantly_, false);
+  n_.param<double>("trans_goal_threshold", trans_goal_threshold_, 0.04);
+  n_.param<double>("rot_goal_threshold", rot_goal_threshold_, 0.25);
 
   rate_ = ros::Rate(publish_rate);
   pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
@@ -140,6 +142,7 @@ void cartesianTrajectoryGeneratorRos::actionFeedback()
 {
   if (as_->isActive())
   {
+    // Time percentage
     if (ctg_.get_total_time() != 0.0)
     {
       action_feedback_.time_percentage = std::min(1.0, trajectory_t_ / ctg_.get_total_time());
@@ -148,6 +151,7 @@ void cartesianTrajectoryGeneratorRos::actionFeedback()
     {
       action_feedback_.time_percentage = 0.0;
     }
+    // Path percentage
     double d_trans, d_rot = 1.0;
     if (ctg_.get_trans_distance() != 0.0)
     {
@@ -158,8 +162,20 @@ void cartesianTrajectoryGeneratorRos::actionFeedback()
       d_rot = ctg_.get_rot_distance(trajectory_t_) / ctg_.get_rot_distance();
     }
     action_feedback_.path_percentage = std::min(d_trans, d_rot);
+    // Errors
+    bool error_below_thresholds{false};
+    if (getCurrentPose(this->current_position_, this->current_orientation_, true))
+    {
+      action_feedback_.trans_goal_error = (this->current_position_ - this->requested_position_).norm();
+      action_feedback_.rot_goal_error = this->current_orientation_.angularDistance(this->requested_orientation_);
+      if (action_feedback_.trans_goal_error < this->trans_goal_threshold_ && action_feedback_.rot_goal_error < this->rot_goal_threshold_)
+      {
+        error_below_thresholds = true;
+      }
+    }
+
     as_->publishFeedback(action_feedback_);
-    if (action_feedback_.time_percentage == 1.0)
+    if (action_feedback_.time_percentage == 1.0 && error_below_thresholds)
     {
       ROS_INFO("Set goal succeeded.");
       action_result_.error_code = action_result_.SUCCESSFUL;

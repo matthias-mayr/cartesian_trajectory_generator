@@ -88,6 +88,8 @@ private:
   geometry_msgs::PoseStamped requested_pose_;
   Eigen::Vector3d start_position_;
   Eigen::Quaterniond start_orientation_;
+  Eigen::Vector3d current_position_;
+  Eigen::Quaterniond current_orientation_;
   ros::Time traj_start_ = ros::Time::now();
   std::shared_ptr<cartesian_trajectory_generator::overlay_base> overlay_f_;
   ros::Time overlay_start_ = ros::Time::now();
@@ -101,7 +103,9 @@ private:
   cartesian_trajectory_generator::TrajectoryResult action_result_;
   std::string frame_name_;
   std::string ee_link_;
-  double trans_v_max_{ 0 };
+  double trans_goal_threshold_{0};
+  double rot_goal_threshold_{0};
+  double trans_v_max_{0};
   double trajectory_t_{ 0. };
 
   ros::Rate rate_ = 1;

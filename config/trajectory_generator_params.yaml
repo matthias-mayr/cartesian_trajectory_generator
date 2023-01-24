@@ -8,4 +8,6 @@ trans_v_max: 0.5
 rot_v_max: 0.5
 trans_a: 0.2 
 rot_a: 0.5
+trans_goal_threshold: 0.04
+rot_goal_threshold: 0.25
 sync: true

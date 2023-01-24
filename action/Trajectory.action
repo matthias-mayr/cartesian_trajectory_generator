@@ -16,3 +16,5 @@ string error_string
 # Between 0 and 1
 float32 path_percentage
 float32 time_percentage
+float32 trans_goal_error
+float32 rot_goal_error

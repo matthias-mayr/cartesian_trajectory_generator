@@ -62,6 +62,11 @@ This package publishes an interactive marker. You can move it to your desired go
 The marker position is updated when new goals arrive via messages or dynamic reconfigure.
 ![image info](./res/interactive_marker.png)
 
+### With an action
+The ROS node will spawn an action server at `/cartesian_trajectory_generator/goal_action` that can be used to send an action.
+
+The action will succeed once the reference trajectory has finished and the end-effector is below both the specified `trans_goal_threshold` and `rot_goal_threshold`.
+
 ## Apply an Overlay Motion
 
 The trajectory generator announces a service at `/cartesian_trajectory_generator/overlay_motion`.
