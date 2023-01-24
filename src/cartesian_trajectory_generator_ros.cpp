@@ -305,6 +305,15 @@ bool cartesianTrajectoryGeneratorRos::goalCallback(const geometry_msgs::PoseStam
 bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_generator::OverlayMotionRequest &req,
                                                       cartesian_trajectory_generator::OverlayMotionResponse &res)
 {
+  if (!first_goal_)
+  {
+    if (getCurrentPose(requested_position_, requested_orientation_)) {
+      updateGoal();
+    } else {
+      ROS_WARN("Could not update goal pose. Will not apply overlay.");
+      return false;
+    }
+  }
   if (overlay_f_)
   {
     overlay_fade_ = overlay_f_->get_translation((ros::Time::now() - overlay_start_).toSec());
@@ -333,11 +342,6 @@ bool cartesianTrajectoryGeneratorRos::overlayCallback(cartesian_trajectory_gener
   else
   {
     overlay_f_.reset();
-  }
-  if (!first_goal_)
-  {
-    getCurrentPose(requested_position_, requested_orientation_);
-    updateGoal();
   }
   return true;
 }
@@ -386,7 +390,7 @@ void cartesianTrajectoryGeneratorRos::processMarkerFeedback(
     Eigen::Quaterniond current_orientation{ Eigen::Quaterniond::Identity() };
     if (getCurrentPose(current_position, current_orientation))
     {
-      updateMarkerPose(current_position, current_orientation);
+      updateMarkerPose(this->current_position_, this->current_orientation_);
     }
   }
 
