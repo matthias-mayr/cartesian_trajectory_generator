@@ -201,6 +201,13 @@ void cartesianTrajectoryGeneratorRos::actionGoalCallback()
 void cartesianTrajectoryGeneratorRos::actionPreemptCallback()
 {
   ROS_INFO("Actionserver got preempted.");
+  // Abort by setting a new goal to the current position
+  if (getCurrentPose(this->requested_position_, this->requested_orientation_, true)) {
+    updateGoal(true);
+  } else {
+    ROS_WARN("Could not update goal pose. Emergency abort by setting early start time.");
+    this->traj_start_ = ros::Time::now() - ros::Duration(60 * 60);
+  }
   as_->setPreempted();
 }
 
