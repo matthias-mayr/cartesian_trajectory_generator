@@ -420,9 +420,7 @@ void cartesianTrajectoryGeneratorRos::processMarkerFeedback(
   else if (feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT &&
            feedback->menu_entry_id == 2)
   {
-    Eigen::Vector3d current_position{ Eigen::Vector3d::Zero() };
-    Eigen::Quaterniond current_orientation{ Eigen::Quaterniond::Identity() };
-    if (getCurrentPose(current_position, current_orientation))
+    if (getCurrentPose(this->current_position_, this->current_orientation_))
     {
       updateMarkerPose(this->current_position_, this->current_orientation_);
     }
