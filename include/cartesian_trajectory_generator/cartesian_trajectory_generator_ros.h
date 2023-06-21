@@ -17,6 +17,7 @@
 #include <tf/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 #include <memory>
+#include <string>
 
 namespace cartesian_trajectory_generator
 {
@@ -41,6 +42,8 @@ public:
 
   void goalMsgCallback(const geometry_msgs::PoseStampedConstPtr &msg)
   {
+    this->trans_goal_threshold_ = this->trans_goal_threshold_default_;
+    this->rot_goal_threshold_ = this->rot_goal_threshold_default_;
     goalCallback(msg);
   }
 
@@ -105,6 +108,8 @@ private:
   std::string ee_link_;
   double trans_goal_threshold_{0};
   double rot_goal_threshold_{0};
+  double trans_goal_threshold_default_{0};
+  double rot_goal_threshold_default_{0};
   double trans_v_max_{0};
   double trajectory_t_{ 0. };
 

@@ -88,8 +88,14 @@ cartesianTrajectoryGeneratorRos::cartesianTrajectoryGeneratorRos()
   n_.param<double>("rot_d", rot_d_, trans_a_);
   n_.param<bool>("sync", synced, false);
   n_.param<bool>("publish_constantly", publish_constantly_, false);
-  n_.param<double>("trans_goal_threshold", trans_goal_threshold_, 0.04);
-  n_.param<double>("rot_goal_threshold", rot_goal_threshold_, 0.25);
+  n_.param<double>("trans_goal_threshold_default", trans_goal_threshold_default_, 0.04);
+  n_.param<double>("rot_goal_threshold_default", rot_goal_threshold_default_, 0.25);
+  if (n_.hasParam("trans_goal_threshold") || n_.hasParam("rot_goal_threshold"))
+  {
+    ROS_WARN("Deprecation: The parameters 'trans_goal_threshold' & 'rot_goal_threshold' were renamed to 'trans_goal_threshold_default' & 'rot_goal_threshold_default'. Please update your YAML file.");
+    n_.param<double>("trans_goal_threshold", trans_goal_threshold_default_);
+    n_.param<double>("rot_goal_threshold", rot_goal_threshold_default_);
+  }
 
   rate_ = ros::Rate(publish_rate);
   pub_pose_ = n_.advertise<geometry_msgs::PoseStamped>(pose_topic, 1);
@@ -188,6 +194,18 @@ void cartesianTrajectoryGeneratorRos::actionGoalCallback()
 {
   boost::shared_ptr<const cartesian_trajectory_generator::TrajectoryGoal> action;
   action = as_->acceptNewGoal();
+  // Get thresholds from action
+  this->trans_goal_threshold_ = action->trans_goal_tolerance;
+  if (this->trans_goal_threshold_ == 0.0)
+  {
+    this->trans_goal_threshold_ = this->trans_goal_threshold_default_;
+  }
+  this->rot_goal_threshold_ = action->rot_goal_tolerance;
+  if (this->rot_goal_threshold_ == 0.0)
+  {
+    this->rot_goal_threshold_ = this->rot_goal_threshold_default_;
+  }
+  // Get start pose from action if it is supplied
   bool get_initial_pose = true;
   if (action->start.pose != geometry_msgs::Pose())
   {

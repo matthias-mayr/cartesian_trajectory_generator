@@ -65,7 +65,7 @@ The marker position is updated when new goals arrive via messages or dynamic rec
 ### With an action
 The ROS node will spawn an action server at `/cartesian_trajectory_generator/goal_action` that can be used to send an action.
 
-The action will succeed once the reference trajectory has finished and the end-effector is below both the specified `trans_goal_threshold` and `rot_goal_threshold`.
+The action will succeed once the reference trajectory has finished and the end-effector is below both the specified tolerances. With the action it is also possible to specify custom ones. Otherwise, the values of the parameters `trans_goal_threshold_default` and `rot_goal_threshold_default` are used.
 
 ## Apply an Overlay Motion
 

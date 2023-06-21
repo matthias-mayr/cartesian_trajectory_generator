@@ -3,6 +3,9 @@ Header header
 # Start pose is optional. Empty pose uses current TF transformation 
 geometry_msgs/PoseStamped start
 geometry_msgs/PoseStamped goal
+
+float32 trans_goal_tolerance
+float32 rot_goal_tolerance
 ---
 # result
 int32 error_code
